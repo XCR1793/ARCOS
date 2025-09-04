@@ -1,0 +1,25 @@
+# CMake build folder
+/build/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# VS Code settings
+.vscode/
+
+# Visual Studio
+*.vcxproj*
+*.sln
+*.user
+*.opensdf
+*.sdf
+*.ipch
+*.pdb
+*.obj
+*.exe
+*.lib
+*.dll
+*.log
