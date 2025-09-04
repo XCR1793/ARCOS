@@ -1,5 +1,6 @@
 # CMake build folder
 /build/
+/testing/
 
 # CMake generated files
 CMakeFiles/
