@@ -1,6 +1,11 @@
 # CMake build folder
 /build/
+
+# Testing temp/output folder
 /testing/
+
+# PlatformIO build folder
+.pio/
 
 # CMake generated files
 CMakeFiles/
