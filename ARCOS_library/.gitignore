@@ -29,3 +29,6 @@ Makefile
 *.lib
 *.dll
 *.log
+
+# Documentation
+*.bkp
