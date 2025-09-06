@@ -1,37 +1,37 @@
+/**
+ * File:      hal_gpio.hpp
+ * Category:  abstraction
+ * Author:    XCR1793 (Feather Forge)
+ * 
+ * Purpose:
+ *    Provides a template for GPIO HAL in both single and parallel
+ *    operations of digital pins.
+ */
+
 #ifndef ARCOS_ABSTRACTION_CORE_HAL_GPIO_HPP_
 #define ARCOS_ABSTRACTION_CORE_HAL_GPIO_HPP_
 
-#if defined(__has_include)
-  #if __has_include(<type_traits>)
-    #include <type_traits>
-    #define ARCOS_HAS_TYPE_TRAITS 1
-  #else
-    #define ARCOS_HAS_TYPE_TRAITS 0
-  #endif
-#else
-  #define ARCOS_HAS_TYPE_TRAITS 0
-#endif
+namespace arcos::hal::gpio{
+  enum struct GpioHalPinMode{
+    Input = 0,
+    Output = 1
+  };
 
-enum class PinState{Reset, Set};
-enum class PinMode {Input, Output};
+  enum struct GpioHalPinPull{
+    Float = 0,
+    PullUp = 1,
+    PullDown = 2
+  };
 
-template <typename PlatformGpio, typename GpioAddressBank = int>
-class HAL_GPIO{
-  #if ARCOS_HAS_TYPE_TRAITS
-    static_assert(std::is_integral<GpioAddressBank>::value, "GpioAddressBank must be an integral type");
-  #endif
+  enum struct GpioHalPortMode{
+    Single = 0,
+    Parallel = 1
+  };
 
-  public:
-    HAL_GPIO(GpioAddressBank pin, PinMode mode = PinMode::Input) : impl(pin, mode){}
-
-    void write(PinState state){impl.write(state);}
-
-    void toggle(){impl.toggle();}
-
-    PinState read(){return impl.read();}
-
-  private:
-    PlatformGpio impl;
-};
+  struct GpioHalPinAddress{
+    void* port;
+    uint32_t mask; // Can be recast if need be
+  };
+} // arcos hardware abstraction layer namespace specifically gpio
 
 #endif // ARCOS_ABSTRACTION_CORE_HAL_GPIO_HPP_
