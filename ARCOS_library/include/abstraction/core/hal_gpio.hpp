@@ -12,6 +12,8 @@
 #ifndef ARCOS_ABSTRACTION_CORE_HAL_GPIO_HPP_
 #define ARCOS_ABSTRACTION_CORE_HAL_GPIO_HPP_
 
+#include <stdint.h>
+
 namespace arcos::abstraction{
   namespace gpio{
     /** Set GPIO pins as Inputs or Outputs */
@@ -27,12 +29,6 @@ namespace arcos::abstraction{
       PullDown = 2
     };
 
-    /** Set GPIO pin buses (port) as single or parallel driven */
-    enum struct GpioHalPortMode{
-      Single = 0,
-      Parallel = 1
-    };
-
     /** Structure for storing the GPIO pin buses */
     template <typename PinBankType>
     struct GpioHalPinAddress{
@@ -46,48 +42,62 @@ namespace arcos::abstraction{
 
   } // arcos hardware abstraction layer namespace specifically gpio
 
-  template <typename  PlatformImplentation,
-                      gpio::GpioHalPortMode PortMode,
-                      gpio::GpioHalPinMode PinMode>
-  class HalGpio{
-    public:
-      constexpr HalGpio() noexcept = default;
-      ~HalGpio() = default;
-
+  template <typename  PlatformImplementation,
+            uintptr_t PinNumber,
+            typename  PinBusType,
+            gpio::GpioHalPinMode PinMode,
+            gpio::GpioHalPinPull PinPull>
+  struct HalGpio{
       /**
-       * @brief Initialises GPIO Pins & Bus
+       * @brief Initialises GPIO Pins & Bus and flattens pin registration
+       *        and access instead of having to specify ports.
        */
-      static void Init(PlatformImplentation& impl){
-        impl.hal_gpio_initialisation();
-      };
+      static inline void Initialise(){
+        PlatformImplementation::Initialise();
+      }
       
       /**
        * @brief Sets Pins as input or output
        */
+      static inline void SetPin(){
+        PlatformImplementation::template SetPin<PinNumber, PinMode>();
+      }
 
       /**
        * @brief Sets Pull direction for pins
        */
-
-      /**
-       * @brief Sets Port mode (single or parallel)
-       */
+      static inline void PullPin(){
+        PlatformImplementation::template PullPin<PinNumber, PinPull>();
+      }
 
       /**
        * @brief Writes a pin as high or low
        */
+      template <bool State>
+      static inline void WritePin(){
+        PlatformImplementation::template WritePin<PinNumber, State>();
+      }
 
       /**
        * @brief Writes a set of pins in parallel
        */
+      static inline void WritePinParallel(){
+        PlatformImplementation::template WritePinParallel<gpio::GpioHalPinAddress<PinBusType>>();
+      }
 
       /**
        * @brief Reads a pin as high or low
        */
+      static inline bool ReadPin(){
+        return PlatformImplementation::template ReadPin<PinNumber>();
+      }
 
       /**
        * @brief Reads a set of pins in parallel
        */
+      static inline bool ReadPinParallel(){
+        return PlatformImplementation::template ReadPinParallel<gpio::GpioHalPinAddress<PinBusType>>();
+      }
   };
 }
 
