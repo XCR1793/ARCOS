@@ -48,56 +48,56 @@ namespace arcos::abstraction{
             gpio::GpioHalPinMode PinMode,
             gpio::GpioHalPinPull PinPull>
   struct HalGpio{
-      /**
-       * @brief Initialises GPIO Pins & Bus and flattens pin registration
-       *        and access instead of having to specify ports.
-       */
-      static inline void Initialise(){
-        PlatformImplementation::Initialise();
-      }
-      
-      /**
-       * @brief Sets Pins as input or output
-       */
-      static inline void SetPin(){
-        PlatformImplementation::template SetPin<PinNumber, PinMode>();
-      }
+    /**
+     * @brief Initialises GPIO Pins & Bus and flattens pin registration
+     *        and access instead of having to specify ports.
+     */
+    static inline void Initialise(){
+      PlatformImplementation::Initialise();
+    }
+    
+    /**
+     * @brief Sets Pins as input or output
+     */
+    static inline void SetPin(){
+      PlatformImplementation::template SetPin<PinNumber, PinMode>();
+    }
 
-      /**
-       * @brief Sets Pull direction for pins
-       */
-      static inline void PullPin(){
-        PlatformImplementation::template PullPin<PinNumber, PinPull>();
-      }
+    /**
+     * @brief Sets Pull direction for pins
+     */
+    static inline void PullPin(){
+      PlatformImplementation::template PullPin<PinNumber, PinPull>();
+    }
 
-      /**
-       * @brief Writes a pin as high or low
-       */
-      template <bool State>
-      static inline void WritePin(){
-        PlatformImplementation::template WritePin<PinNumber, State>();
-      }
+    /**
+     * @brief Writes a pin as high or low
+     */
+    template <bool State>
+    static inline void WritePin(){
+      PlatformImplementation::template WritePin<PinNumber, State>();
+    }
 
-      /**
-       * @brief Writes a set of pins in parallel
-       */
-      static inline void WritePinParallel(){
-        PlatformImplementation::template WritePinParallel<gpio::GpioHalPinAddress<PinBusType>>();
-      }
+    /**
+     * @brief Writes a set of pins in parallel
+     */
+    static inline void WritePinParallel(uintptr_t pinValues){
+      PlatformImplementation::template WritePinParallel<gpio::GpioHalPinAddress<PinBusType>>(pinValues);
+    }
 
-      /**
-       * @brief Reads a pin as high or low
-       */
-      static inline bool ReadPin(){
-        return PlatformImplementation::template ReadPin<PinNumber>();
-      }
+    /**
+     * @brief Reads a pin as high or low
+     */
+    static inline bool ReadPin(){
+      return PlatformImplementation::template ReadPin<PinNumber>();
+    }
 
-      /**
-       * @brief Reads a set of pins in parallel
-       */
-      static inline bool ReadPinParallel(){
-        return PlatformImplementation::template ReadPinParallel<gpio::GpioHalPinAddress<PinBusType>>();
-      }
+    /**
+     * @brief Reads a set of pins in parallel
+     */
+    static inline bool ReadPinParallel(){
+      return PlatformImplementation::template ReadPinParallel<gpio::GpioHalPinAddress<PinBusType>>();
+    }
   };
 }
 
