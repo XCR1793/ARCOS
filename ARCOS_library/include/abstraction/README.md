@@ -27,3 +27,19 @@ CMake:
 ```
 
 All driver and core file implementations in each platform is then connected to a hal_connector.hpp file which each folder must have. This is to increase ease of scaling as the hal.hpp only has to include the hal_connector file which each platform's files connect to.
+
+File define protections setup is as follows
+```
+Project Name: ARCOS
+Folder Location: Abstraction
+File Name: README.md
+Combined = ARCOS_ABSTRACTION_README_MD_
+
+Deeper File Example
+Project Name: ARCOS
+Folder Location: Abstraction/core
+File Name = hal_gpio.hpp
+Combined = ARCOS_ABSTRACTION_CORE_HAL_GPIO_HPP_
+```
+
+For commenting /** comment */ is used normalle except if its attached to the end of a line where // is used. The reason for this distinction is to show the difference in comments where // is used to explain singular lines that are inline whilst /** this */ is used for everything else. Essentially // is quick explaination.
