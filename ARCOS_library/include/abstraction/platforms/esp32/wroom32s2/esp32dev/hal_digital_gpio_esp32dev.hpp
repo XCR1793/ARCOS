@@ -1,5 +1,5 @@
 /*****************************************************************
- * File:      hal_gpio_esp32dev.hpp
+ * File:      hal_digital_gpio_esp32dev.hpp
  * Category:  abstraction
  * Author:    XCR1793 (Feather Forge)
  * 
@@ -8,8 +8,8 @@
  *    esp32s2 dev modules.
  *****************************************************************/
 
-#ifndef ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S2_ESP32DEV_HAL_GPIO_ESP32DEV_HPP_
-#define ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S2_ESP32DEV_HAL_GPIO_ESP32DEV_HPP_
+#ifndef ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S2_ESP32DEV_HAL_DIGITAL_GPIO_ESP32DEV_HPP_
+#define ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S2_ESP32DEV_HAL_DIGITAL_GPIO_ESP32DEV_HPP_
 
 #include "../../../../core/hal_digital_gpio.hpp"
 #include "soc/gpio_reg.h"
@@ -18,7 +18,7 @@
 #include "driver/gpio.h"
 
 namespace arcos::platforms::esp32::wroom32s2{
-  struct HAL_GPIO_Esp32Dev_Impl{
+  struct HAL_DIGITAL_GPIO_Esp32Dev_Impl{
     /** 
      * @brief Nothing to initialise as esp32 has all gpios on one port
      */
@@ -120,4 +120,4 @@ namespace arcos::platforms::esp32::wroom32s2{
   };
 };
 
-#endif // ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S2_ESP32DEV_HAL_GPIO_ESP32DEV_HPP_
+#endif // ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S2_ESP32DEV_HAL_DIGITAL_GPIO_ESP32DEV_HPP_
