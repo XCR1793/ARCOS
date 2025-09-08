@@ -8,7 +8,7 @@
 .pio/
 
 # PlatformIO generated files
-*.esp32-dev
+sdkconfig.*
 
 # CMake generated files
 CMakeFiles/
