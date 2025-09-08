@@ -11,7 +11,7 @@
 #ifndef ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S2_ESP32DEV_HAL_GPIO_ESP32DEV_HPP_
 #define ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S2_ESP32DEV_HAL_GPIO_ESP32DEV_HPP_
 
-#include "../../../../core/hal_gpio.hpp"
+#include "../../../../core/hal_digital_gpio.hpp"
 #include "soc/gpio_reg.h"
 #include "soc/gpio_struct.h"
 #include "soc/io_mux_reg.h"
@@ -88,11 +88,35 @@ namespace arcos::platforms::esp32::wroom32s2{
       GPIO.out_w1ts = maskedValue; // Set pins that should go HIGH
     }
 
+    /**
+     * @brief Read an individual pin digitally
+     */
     template <uintptr_t PinNumber>
-    static inline void ReadPin(){}
+    static inline bool ReadPin(){
+      static_assert(PinNumber <= 47, "PinNumber must be between 0-47 for ESP32-S2 Modules");
 
+      if constexpr (PinNumber < 32){
+        return (GPIO.in >> PinNumber) & 0x1;
+      }else{
+        return (GPIO.in1.data >> (PinNumber - 32)) & 0x1;
+      }
+    }
+
+    /**
+     * @brief Read a pin bank in parallel
+     */
     template <typename PinBus>
-    static inline void ReadPinParallel(){}
+    static inline uint64_t ReadPinParallel(){
+      static_assert(PinBus::pinbank != 0, "PinBus mask cannot be zero");
+
+      /** Grab low and high banks directly */
+      uint64_t in_low  = static_cast<uint64_t>(GPIO.in);
+      uint64_t in_high = static_cast<uint64_t>(GPIO.in1.data);
+
+      uint64_t full_in = in_low | (in_high << 32); // Merge into one 64-bit register space (pins 32–47 shifted up)
+
+      return full_in & PinBus::pinbank; // Apply compile-time bus mask
+    }
   };
 };
 

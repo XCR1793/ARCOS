@@ -1,5 +1,5 @@
 /*****************************************************************
- * File:      hal_gpio.hpp
+ * File:      hal_digital_gpio.hpp
  * Category:  abstraction
  * Author:    XCR1793 (Feather Forge)
  * 
