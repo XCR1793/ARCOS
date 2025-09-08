@@ -98,6 +98,36 @@ namespace arcos::abstraction{
     static inline uintptr_t ReadPinParallel(){
       return PlatformImplementation::template ReadPinParallel<gpio::GpioHalPinAddress<PinBusType>>();
     }
+
+    /**
+     * @brief Writes a pin as high or low using lower level faster implementation
+     */
+    template <bool State>
+    static inline void FastWritePin(){
+      PlatformImplementation::template FastWritePin<PinNumber, State>();
+    }
+
+    /**
+     * @brief Writes a set of pins in parallel using lower level faster implementation
+     */
+    static inline void FastWritePinParallel(uintptr_t pinValues){
+      PlatformImplementation::template WritePinParallel<gpio::GpioHalPinAddress<PinBusType>>(pinValues);
+    }
+
+
+    /**
+     * @brief Reads a pin as high or low using lower level faster implementation
+     */
+    static inline bool FastReadPin(){
+      return PlatformImplementation::template ReadPin<PinNumber>();
+    }
+
+    /**
+     * @brief Reads a set of pins in parallel using lower level faster implementation
+     */
+    static inline uintptr_t FastReadPinParallel(){
+      return PlatformImplementation::template ReadPinParallel<gpio::GpioHalPinAddress<PinBusType>>();
+    }
   };
 }
 
