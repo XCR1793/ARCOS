@@ -7,8 +7,8 @@
   #include "platforms/avr/atmega328p/uno/hal_connector.hpp"
 #elif defined(TARGET_ESP32_Wroom32S2_Esp32Dev)
   #include "platforms/esp32/wroom32s2/esp32dev/hal_connector.hpp"
-#elif defined(TARGET_ESP32_Wroom32S3_Esp32Dev)
-  #include "platforms/esp32/wroom32s3/esp32dev/hal_connector.hpp"
+#elif defined(TARGET_ESP32_Wroom32S3_Module)
+  #include "platforms/esp32/wroom32s3/module/hal_connector.hpp"
 #else
   #error "No platform selected!"
 #endif
