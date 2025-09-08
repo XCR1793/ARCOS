@@ -7,6 +7,9 @@
 # PlatformIO build folder
 .pio/
 
+# PlatformIO generated files
+*.esp32-dev
+
 # CMake generated files
 CMakeFiles/
 CMakeCache.txt
