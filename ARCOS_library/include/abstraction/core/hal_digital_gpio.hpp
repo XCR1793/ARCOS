@@ -95,7 +95,7 @@ namespace arcos::abstraction{
     /**
      * @brief Reads a set of pins in parallel
      */
-    static inline bool ReadPinParallel(){
+    static inline uintptr_t ReadPinParallel(){
       return PlatformImplementation::template ReadPinParallel<gpio::GpioHalPinAddress<PinBusType>>();
     }
   };
