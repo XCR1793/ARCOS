@@ -9,8 +9,8 @@
  *    a single port with zero runtime overhead.
  *****************************************************************/
 
-#ifndef ARCOS_ABSTRACTION_CORE_HAL_GPIO_HPP_
-#define ARCOS_ABSTRACTION_CORE_HAL_GPIO_HPP_
+#ifndef ARCOS_ABSTRACTION_CORE_HAL_DIGITAL_GPIO_HPP_
+#define ARCOS_ABSTRACTION_CORE_HAL_DIGITAL_GPIO_HPP_
 
 #include <stdint.h>
 
@@ -131,4 +131,4 @@ namespace arcos::abstraction{
   };
 }
 
-#endif // ARCOS_ABSTRACTION_CORE_HAL_GPIO_HPP_
+#endif // ARCOS_ABSTRACTION_CORE_HAL_DIGITAL_GPIO_HPP_
