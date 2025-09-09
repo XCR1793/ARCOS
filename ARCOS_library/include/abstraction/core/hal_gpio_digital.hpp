@@ -128,6 +128,86 @@ namespace arcos::abstraction{
     static inline uintptr_t FastReadPinParallel(){
       return PlatformImplementation::template ReadPinParallel<gpio::GpioHalPinAddress<PinBusType>>();
     }
+
+    /**
+     * @brief Sets pin as input or output (runtime).
+     * @param pin   Pin number at runtime
+     * @param mode  Pin mode at runtime
+     * @note Runtime variant of SetPin().
+     */
+    static inline void SetPin(uintptr_t pin, gpio::GpioHalPinMode mode, gpio::GpioHalPinPull pull);
+
+    /**
+     * @brief Sets pull direction for pin (runtime).
+     * @param pin   Pin number at runtime
+     * @param pull  Pin pull configuration at runtime
+     * @note Runtime variant of PullPin().
+     */
+    static inline void PullPin(uintptr_t pin, gpio::GpioHalPinPull pull);
+
+    /**
+     * @brief Writes a pin as high or low (runtime).
+     * @param pin    Pin number at runtime
+     * @param state  True for HIGH, false for LOW
+     * @note Runtime variant of WritePin().
+     */
+    static inline void WritePin(uintptr_t pin, bool state);
+
+    /**
+     * @brief Writes a set of pins in parallel (runtime).
+     * @param pinMask    Mask of pins to write
+     * @param pinValues  Bit values corresponding to each pin
+     * @note Runtime variant of WritePinParallel().
+     */
+    static inline void WritePinParallel(uintptr_t pinMask, uintptr_t pinValues);
+
+    /**
+     * @brief Reads a pin as high or low (runtime).
+     * @param pin  Pin number at runtime
+     * @return True if HIGH, false if LOW
+     * @note Runtime variant of ReadPin().
+     */
+    static inline bool ReadPin(uintptr_t pin);
+
+    /**
+     * @brief Reads a set of pins in parallel (runtime).
+     * @param pinMask  Mask of pins to read
+     * @return Bit values of the read pins
+     * @note Runtime variant of ReadPinParallel().
+     */
+    static inline uintptr_t ReadPinParallel(uintptr_t pinMask);
+
+    /**
+     * @brief Writes a pin using a faster, lower-level implementation (runtime).
+     * @param pin    Pin number at runtime
+     * @param state  True for HIGH, false for LOW
+     * @note Runtime variant of FastWritePin().
+     */
+    static inline void FastWritePin(uintptr_t pin, bool state);
+
+    /**
+     * @brief Writes a set of pins in parallel using a faster implementation (runtime).
+     * @param pinMask    Mask of pins to write
+     * @param pinValues  Bit values corresponding to each pin
+     * @note Runtime variant of FastWritePinParallel().
+     */
+    static inline void FastWritePinParallel(uintptr_t pinMask, uintptr_t pinValues);
+
+    /**
+     * @brief Reads a pin using a faster, lower-level implementation (runtime).
+     * @param pin  Pin number at runtime
+     * @return True if HIGH, false if LOW
+     * @note Runtime variant of FastReadPin().
+     */
+    static inline bool FastReadPin(uintptr_t pin);
+
+    /**
+     * @brief Reads a set of pins in parallel using a faster implementation (runtime).
+     * @param pinMask  Mask of pins to read
+     * @return Bit values of the read pins
+     * @note Runtime variant of FastReadPinParallel().
+     */
+    static inline uintptr_t FastReadPinParallel(uintptr_t pinMask);
   };
 }
 

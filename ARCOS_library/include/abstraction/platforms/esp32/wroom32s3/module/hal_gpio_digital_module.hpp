@@ -151,6 +151,164 @@ namespace arcos::abstraction{
                         (static_cast<uint64_t>(GPIO.in1.data) << 32);
       return gpio64 & PinBus::pinbank;
     }
+
+    /**
+     * @brief Sets pin as input or output (runtime)
+     * @param pin   Pin number at runtime
+     * @param mode  Pin mode at runtime
+     * @note Runtime variant of SetPin()
+     */
+    static inline void SetPin(uintptr_t pin, gpio::GpioHalPinMode mode, gpio::GpioHalPinPull pull = gpio::GpioHalPinPull::Float) {
+      if (pin > 48) return;  // Pin number out of range
+        
+      gpio_config_t cfg{};
+      cfg.pin_bit_mask = (1ULL << pin);
+      cfg.mode = (mode == gpio::GpioHalPinMode::Output) ? GPIO_MODE_OUTPUT : GPIO_MODE_INPUT;
+      cfg.intr_type = GPIO_INTR_DISABLE;
+        
+      switch (pull) {
+        case gpio::GpioHalPinPull::PullUp:
+          cfg.pull_up_en = GPIO_PULLUP_ENABLE;
+          cfg.pull_down_en = GPIO_PULLDOWN_DISABLE;
+          break;
+        case gpio::GpioHalPinPull::PullDown:
+          cfg.pull_up_en = GPIO_PULLUP_DISABLE;
+          cfg.pull_down_en = GPIO_PULLDOWN_ENABLE;
+          break;
+        case gpio::GpioHalPinPull::Float:
+          cfg.pull_up_en = GPIO_PULLUP_DISABLE;
+          cfg.pull_down_en = GPIO_PULLDOWN_DISABLE;
+          break;
+      }
+    
+      gpio_config(&cfg);
+    }
+
+
+    /**
+     * @brief Sets pull direction for pin (runtime)
+     * @param pin   Pin number at runtime
+     * @param pull  Pin pull configuration at runtime
+     * @note Runtime variant of PullPin()
+     */
+    static inline void PullPin(uintptr_t pin, gpio::GpioHalPinPull pull) {
+      if (pin > 48) return; // Pin number out of range
+    
+      switch (pull) {
+        case gpio::GpioHalPinPull::PullUp:
+          gpio_set_pull_mode(static_cast<gpio_num_t>(pin), GPIO_PULLUP_ONLY);
+          break;
+        case gpio::GpioHalPinPull::PullDown:
+          gpio_set_pull_mode(static_cast<gpio_num_t>(pin), GPIO_PULLDOWN_ONLY);
+          break;
+        case gpio::GpioHalPinPull::Float:
+          gpio_set_pull_mode(static_cast<gpio_num_t>(pin), GPIO_FLOATING);
+          break;
+      }
+    }
+
+    /**
+     * @brief Writes a pin as high or low (runtime)
+     * @param pin    Pin number at runtime
+     * @param state  True for HIGH, false for LOW
+     * @note Runtime variant of WritePin()
+     */
+    static inline void WritePin(uintptr_t pin, bool state) {
+      if (pin > 48) return; // Pin number out of range
+      gpio_set_level(static_cast<gpio_num_t>(pin), state ? 1 : 0);
+    }
+
+    /**
+     * @brief Writes a set of pins in parallel (runtime)
+     * @param pinMask    Mask of pins to write
+     * @param pinValues  Bit values corresponding to each pin
+     * @note Runtime variant of WritePinParallel()
+     */
+    static inline void WritePinParallel(uintptr_t pinMask, uintptr_t pinValues) {
+      for (uint8_t i = 0; i <= 48; i++) {
+        if ((pinMask >> i) & 0x1) {
+          gpio_set_level(static_cast<gpio_num_t>(i), (pinValues >> i) & 0x1);
+        }
+      }
+    }
+
+    /**
+     * @brief Reads a pin as high or low (runtime)
+     * @param pin  Pin number at runtime
+     * @return True if HIGH, false if LOW
+     * @note Runtime variant of ReadPin()
+     */
+    static inline bool ReadPin(uintptr_t pin) {
+      if (pin > 48) return false; // Pin number out of range
+      return gpio_get_level(static_cast<gpio_num_t>(pin)) != 0;
+    }
+
+    /**
+     * @brief Reads a set of pins in parallel (runtime)
+     * @param pinMask  Mask of pins to read
+     * @return Bit values of the read pins
+     * @note Runtime variant of ReadPinParallel()
+     */
+    static inline uintptr_t ReadPinParallel(uintptr_t pinMask) {
+      uintptr_t result = 0;
+      for (uint8_t i = 0; i <= 48; i++) {
+        if ((pinMask >> i) & 0x1) {
+          result |= (static_cast<uintptr_t>(gpio_get_level(static_cast<gpio_num_t>(i))) << i);
+        }
+      }
+      return result;
+    }
+
+    /**
+     * @brief Writes a pin using a faster, lower-level implementation (runtime)
+     * @param pin    Pin number at runtime
+     * @param state  True for HIGH, false for LOW
+     * @note Runtime variant of FastWritePin()
+     */
+    static inline void FastWritePin(uintptr_t pin, bool state) {
+      if (pin > 48) return; // Pin number out of range
+      if (state) {
+        GPIO.out_w1ts = (1 << pin);
+      } else {
+        GPIO.out_w1tc = (1 << pin);
+      }
+    }
+
+    /**
+     * @brief Writes a set of pins in parallel using a faster implementation (runtime)
+     * @param pinMask    Mask of pins to write
+     * @param pinValues  Bit values corresponding to each pin
+     * @note Runtime variant of FastWritePinParallel()
+     */
+    static inline void FastWritePinParallel(uintptr_t pinMask, uintptr_t pinValues) {
+      GPIO.out_w1tc = ~pinValues & pinMask; // Clear pins that should go LOW
+      GPIO.out_w1ts = pinValues & pinMask;  // Set pins that should go HIGH
+    }
+
+    /**
+     * @brief Reads a pin using a faster, lower-level implementation (runtime)
+     * @param pin  Pin number at runtime
+     * @return True if HIGH, false if LOW
+     * @note Runtime variant of FastReadPin()
+     */
+    static inline bool FastReadPin(uintptr_t pin) {
+      if (pin > 48) return false; // Pin number out of range
+      uint64_t gpio64 = (static_cast<uint64_t>(GPIO.in) & 0xFFFFFFFFULL) |
+                        (static_cast<uint64_t>(GPIO.in1.data) << 32);
+      return (gpio64 >> pin) & 0x1;
+    }
+
+    /**
+     * @brief Reads a set of pins in parallel using a faster implementation (runtime)
+     * @param pinMask  Mask of pins to read
+     * @return Bit values of the read pins
+     * @note Runtime variant of FastReadPinParallel()
+     */
+    static inline uintptr_t FastReadPinParallel(uintptr_t pinMask) {
+      uint64_t gpio64 = (static_cast<uint64_t>(GPIO.in) & 0xFFFFFFFFULL) |
+                        (static_cast<uint64_t>(GPIO.in1.data) << 32);
+      return gpio64 & pinMask;
+    }
   };
 }; // arcos::abstraction::HAL_GPIO_DIGITAL
 
