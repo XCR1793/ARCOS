@@ -1,7 +1,7 @@
 #ifndef ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_HAL_CONNECTOR_HPP_
 #define ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_HAL_CONNECTOR_HPP_
 
-#include "hal_digital_gpio_module.hpp"
-using HAL_GPIO_DEFAULT = arcos::platforms::esp32::wroom32s3::HAL_DIGITAL_GPIO_Module_Impl;
+#include "hal_gpio_digital_module.hpp"
+using HAL_GPIO_DEFAULT = arcos::abstraction::HAL_GPIO_DIGITAL;
 
 #endif // ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_HAL_CONNECTOR_HPP_

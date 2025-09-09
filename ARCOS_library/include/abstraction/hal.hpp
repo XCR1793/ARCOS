@@ -1,7 +1,7 @@
 #ifndef ARCOS_ABSTRACTION_HAL_HPP_
 #define ARCOS_ABSTRACTION_HAL_HPP_
 
-#include "core/hal_digital_gpio.hpp"
+#include "core/hal_gpio_digital.hpp"
 
 #if defined(TARGET_AVR_Atmega328p_Uno)
   #include "platforms/avr/atmega328p/uno/hal_connector.hpp"

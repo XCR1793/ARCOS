@@ -1,5 +1,5 @@
 /*****************************************************************
- * File:      hal_digital_gpio_module.hpp
+ * File:      hal_gpio_digital_module.hpp
  * Category:  abstraction
  * Author:    XCR1793 (Feather Forge)
  * 
@@ -8,17 +8,16 @@
  *    esp32s3 modules.
  *****************************************************************/
 
-#ifndef ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_HAL_DIGITAL_GPIO_MODULE_HPP_
-#define ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_HAL_DIGITAL_GPIO_MODULE_HPP_
+#ifndef ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_HAL_GPIO_DIGITAL_MODULE_HPP_
+#define ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_HAL_GPIO_DIGITAL_MODULE_HPP_
 
-#include "../../../../core/hal_digital_GPIO.hpp"
-#include "driver/gpio.h"
 #include "soc/gpio_reg.h"
 #include "soc/gpio_struct.h"
 #include "soc/io_mux_reg.h"
+#include "driver/gpio.h"
 
-namespace arcos::platforms::esp32::wroom32s3{
-  struct HAL_DIGITAL_GPIO_Module_Impl{
+namespace arcos::abstraction{
+  struct HAL_GPIO_DIGITAL{
     /** 
      * @brief Nothing to initialise as esp32 has all gpios on one port
      */
@@ -153,6 +152,6 @@ namespace arcos::platforms::esp32::wroom32s3{
       return gpio64 & PinBus::pinbank;
     }
   };
-};
+}; // arcos::abstraction::HAL_GPIO_DIGITAL
 
-#endif // ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_HAL_DIGITAL_GPIO_MODULE_HPP_
+#endif // ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_HAL_GPIO_DIGITAL_MODULE_HPP_
