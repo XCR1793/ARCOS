@@ -29,22 +29,30 @@ namespace arcos::abstraction{
       PullDown = 2
     };
 
-    /** Structure for storing the GPIO pin buses */
-    template <typename PinBankType>
-    struct GpioHalPinAddress{
-      void* port;
-      PinBankType pinbank; // Can be recast if need be
+    /** Generic GPIO port reference */
+    template <typename RegisterType>
+    struct GpioHalPort {
+      volatile RegisterType* base;  // strongly typed, volatile for hardware
     };
-    /** GPIO port sizes */
-    using GpioHalPinAddress8  = GpioHalPinAddress<uint8_t>;
-    using GpioHalPinAddress16 = GpioHalPinAddress<uint16_t>;
-    using GpioHalPinAddress32 = GpioHalPinAddress<uint32_t>;
+
+    /** Pin + port mapping */
+    template <typename PinBankType, typename RegisterType>
+    struct GpioHalPinAddress {
+      GpioHalPort<RegisterType> port; // pointer to the hardware registers
+      PinBankType pinbank;            // mask for pins in this port
+    };
+
+    /** Type aliases for common widths */
+    using GpioHalPinAddress8  = GpioHalPinAddress<uint8_t,  uint8_t>;
+    using GpioHalPinAddress16 = GpioHalPinAddress<uint16_t, uint32_t>; // STM32 uses 32-bit GPIO regs
+    using GpioHalPinAddress32 = GpioHalPinAddress<uint32_t, uint32_t>;
 
   } // arcos hardware abstraction layer namespace specifically gpio
 
   template <typename  PlatformImplementation,
             uintptr_t PinNumber,
             typename  PinBusType,
+            typename  RegisterType,
             gpio::GpioHalPinMode PinMode,
             gpio::GpioHalPinPull PinPull>
   struct HalGpio{
@@ -82,7 +90,7 @@ namespace arcos::abstraction{
      * @brief Writes a set of pins in parallel
      */
     static inline void WritePinParallel(uintptr_t pinValues){
-      PlatformImplementation::template WritePinParallel<gpio::GpioHalPinAddress<PinBusType>>(pinValues);
+      PlatformImplementation::template WritePinParallel<gpio::GpioHalPinAddress<PinBusType, RegisterType>>(pinValues);
     }
 
     /**
@@ -96,7 +104,7 @@ namespace arcos::abstraction{
      * @brief Reads a set of pins in parallel
      */
     static inline uintptr_t ReadPinParallel(){
-      return PlatformImplementation::template ReadPinParallel<gpio::GpioHalPinAddress<PinBusType>>();
+      return PlatformImplementation::template ReadPinParallel<gpio::GpioHalPinAddress<PinBusType, RegisterType>>();
     }
 
     /**
@@ -111,7 +119,7 @@ namespace arcos::abstraction{
      * @brief Writes a set of pins in parallel using lower level faster implementation
      */
     static inline void FastWritePinParallel(uintptr_t pinValues){
-      PlatformImplementation::template WritePinParallel<gpio::GpioHalPinAddress<PinBusType>>(pinValues);
+      PlatformImplementation::template WritePinParallel<gpio::GpioHalPinAddress<PinBusType, RegisterType>>(pinValues);
     }
 
 
@@ -126,7 +134,7 @@ namespace arcos::abstraction{
      * @brief Reads a set of pins in parallel using lower level faster implementation
      */
     static inline uintptr_t FastReadPinParallel(){
-      return PlatformImplementation::template ReadPinParallel<gpio::GpioHalPinAddress<PinBusType>>();
+      return PlatformImplementation::template ReadPinParallel<gpio::GpioHalPinAddress<PinBusType, RegisterType>>();
     }
 
     /**

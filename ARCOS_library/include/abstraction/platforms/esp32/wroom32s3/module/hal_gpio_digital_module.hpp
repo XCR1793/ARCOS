@@ -26,7 +26,7 @@ namespace arcos::abstraction{
     /**
      * @brief Sets pins as output or input using ESP-IDF API
      */
-    template <uintptr_t PinNumber, arcos::abstraction::gpio::GpioHalPinMode PinMode>
+    template <uintptr_t PinNumber, gpio::GpioHalPinMode PinMode>
     static inline void SetPin(){
       static_assert(PinNumber <= 48, "PinNumber must be between 0-45 for ESP32-S3");
       gpio_config_t cfg{};
@@ -160,12 +160,12 @@ namespace arcos::abstraction{
      */
     static inline void SetPin(uintptr_t pin, gpio::GpioHalPinMode mode, gpio::GpioHalPinPull pull = gpio::GpioHalPinPull::Float) {
       if (pin > 48) return;  // Pin number out of range
-        
+
       gpio_config_t cfg{};
       cfg.pin_bit_mask = (1ULL << pin);
       cfg.mode = (mode == gpio::GpioHalPinMode::Output) ? GPIO_MODE_OUTPUT : GPIO_MODE_INPUT;
       cfg.intr_type = GPIO_INTR_DISABLE;
-        
+
       switch (pull) {
         case gpio::GpioHalPinPull::PullUp:
           cfg.pull_up_en = GPIO_PULLUP_ENABLE;
