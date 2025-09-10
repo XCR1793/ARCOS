@@ -20,7 +20,7 @@
 #include <atomic>
 
 namespace arcos::abstraction{
-  struct HAL_I2C{
+  struct HAL_PROTOCAL_I2C{
     static constexpr i2c_port_t DEFAULT_PORT = static_cast<i2c_port_t>(0);
     static constexpr gpio_num_t DEFAULT_SDA  = static_cast<gpio_num_t>(21);
     static constexpr gpio_num_t DEFAULT_SCL  = static_cast<gpio_num_t>(22);
