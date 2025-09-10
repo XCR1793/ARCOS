@@ -16,7 +16,7 @@
 #include <stdint.h>
 
 namespace arcos::abstraction{
-  namespace HAL_SYSTEM_TIMER{
+  namespace timer{
 
     /**
      * @brief Generic system timer interface for HAL.
