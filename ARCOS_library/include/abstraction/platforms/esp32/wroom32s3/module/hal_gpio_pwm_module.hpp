@@ -9,8 +9,8 @@
  *    mapping and runtime frequency/duty control.
  *****************************************************************/
 
-#ifndef ARCOS_ABSTRACTION_PLATFORM_HAL_GPIO_PWM_MODULE_HPP_
-#define ARCOS_ABSTRACTION_PLATFORM_HAL_GPIO_PWM_MODULE_HPP_
+#ifndef ARCOS_ABSTRACTION_PLATFORM_ESP32_WROOM32S3_MODULE_HAL_GPIO_PWM_MODULE_HPP_
+#define ARCOS_ABSTRACTION_PLATFORM_ESP32_WROOM32S3_MODULE_HAL_GPIO_PWM_MODULE_HPP_
 
 #include <stdint.h>
 #include "driver/ledc.h"
@@ -156,4 +156,4 @@ namespace arcos::abstraction{
   } // namespace HAL_GPIO_PWM
 } // namespace arcos::abstraction
 
-#endif // ARCOS_ABSTRACTION_PLATFORM_HAL_GPIO_PWM_MODULE_HPP_
+#endif // ARCOS_ABSTRACTION_PLATFORM_ESP32_WROOM32S3_MODULE_HAL_GPIO_PWM_MODULE_HPP_
