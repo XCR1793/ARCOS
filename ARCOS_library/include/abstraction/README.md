@@ -53,9 +53,9 @@ For commenting /** comment */ is used normalle except if its attached to the end
 - **hal_gpio_pwm.hpp** : PWM outputs for any pwm capable pins, allowing the ability to change its frequency and duty cycle live in both compile time and run time depending on the needs of the project.
 - **hal_protocal_i2c.hpp** : I2C protocal interface for writing and reading bytes along with initialising any i2c or i2c capable pins to start the protocal at any speed the user sets.
 - **hal_system_timer.hpp** : Timing based systems like system delay(milliseconds), delay microseconds, millis and micros.
+- **hal_protocal_spi.hpp** : SPI protocal interface for writing and reading bytes along with initialising any spi or spi capable pins to start th eprotocal at any speed the users sets.
 
 ### HAL core features to add
-- **hal_protocal_spi.hpp**
 - **hal_protocal_uart.hpp**
 - **hal_protocal_i2s.hpp**
 - **hal_gpio_analog**
@@ -70,3 +70,4 @@ For commenting /** comment */ is used normalle except if its attached to the end
 - **HUB75**
 - **SPI SD Card**
 - **WS2812B**
+- **OLED Displays**
