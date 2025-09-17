@@ -5,46 +5,72 @@
 
 static const char* TAG = "PARALLEL_BUFFER";
 
-uint16_t* ParallelBuffer::alloc(size_t sample_count){
+ParallelBuffer::ParallelBuffer() 
+  : buffer(nullptr)
+  , buffer_size(0)
+{
+}
+
+ParallelBuffer::~ParallelBuffer() {
+  free();
+}
+
+bool ParallelBuffer::alloc(size_t sample_count){
   if(sample_count == 0){
     ESP_LOGE(TAG, "Sample count cannot be zero");
-    return nullptr;
+    return false;
+  }
+
+  // Free existing buffer if allocated
+  if(buffer){
+    free();
   }
   
-  size_t buffer_size = sample_count * sizeof(uint16_t);
-  uint16_t* buffer = static_cast<uint16_t*>(heap_caps_malloc(buffer_size, MALLOC_CAP_DMA));
+  size_t buffer_bytes = sample_count * sizeof(uint16_t);
+  buffer = static_cast<uint16_t*>(heap_caps_malloc(buffer_bytes, MALLOC_CAP_DMA));
   
   if(!buffer){
-    ESP_LOGE(TAG, "Failed to allocate DMA buffer (%d bytes)", buffer_size);
-    return nullptr;
-  }
-  
-  ESP_LOGI(TAG, "Allocated DMA buffer: %d samples (%d bytes)", sample_count, buffer_size);
-  
-  /** Initialize to zero */
-  std::memset(buffer, 0, buffer_size);
-  
-  return buffer;
-}
-
-void ParallelBuffer::free(uint16_t* buffer){
-  if(buffer){
-    heap_caps_free(buffer);
-    ESP_LOGI(TAG, "DMA buffer freed");
-  }
-}
-
-bool ParallelBuffer::fillPattern(uint16_t* buffer, size_t sample_count,
-                                size_t high_samples, size_t low_samples,
-                                uint16_t high_value, uint16_t low_value){
-  if(!buffer || sample_count == 0){
-    ESP_LOGE(TAG, "Invalid buffer parameters");
+    ESP_LOGE(TAG, "Failed to allocate DMA buffer (%d bytes)", buffer_bytes);
+    buffer_size = 0;
     return false;
   }
   
-  if(high_samples + low_samples > sample_count){
+  buffer_size = sample_count;
+  ESP_LOGI(TAG, "Allocated DMA buffer: %d samples (%d bytes)", sample_count, buffer_bytes);
+  
+  /** Initialize to zero */
+  std::memset(buffer, 0, buffer_bytes);
+  
+  return true;
+}
+
+void ParallelBuffer::free(){
+  if(buffer){
+    heap_caps_free(buffer);
+    ESP_LOGI(TAG, "DMA buffer freed");
+    buffer = nullptr;
+    buffer_size = 0;
+  }
+}
+
+uint16_t* ParallelBuffer::getBuffer() const {
+  return buffer;
+}
+
+size_t ParallelBuffer::getSize() const {
+  return buffer_size;
+}
+
+bool ParallelBuffer::fillPattern(size_t high_samples, size_t low_samples,
+                                 uint16_t high_value, uint16_t low_value){
+  if(!buffer || buffer_size == 0){
+    ESP_LOGE(TAG, "No buffer allocated");
+    return false;
+  }
+  
+  if(high_samples + low_samples > buffer_size){
     ESP_LOGE(TAG, "Pattern size (%d) exceeds buffer size (%d)", 
-             high_samples + low_samples, sample_count);
+             high_samples + low_samples, buffer_size);
     return false;
   }
   
@@ -63,9 +89,9 @@ bool ParallelBuffer::fillPattern(uint16_t* buffer, size_t sample_count,
   
   /** If pattern is smaller than buffer, repeat it */
   size_t pattern_size = high_samples + low_samples;
-  if(pattern_size < sample_count){
+  if(pattern_size < buffer_size){
     ESP_LOGI(TAG, "Repeating pattern to fill buffer");
-    for(size_t i = pattern_size; i < sample_count; i++){
+    for(size_t i = pattern_size; i < buffer_size; i++){
       buffer[i] = buffer[i % pattern_size];
     }
   }
@@ -73,23 +99,23 @@ bool ParallelBuffer::fillPattern(uint16_t* buffer, size_t sample_count,
   return true;
 }
 
-void ParallelBuffer::fillSolid(uint16_t* buffer, size_t sample_count, uint16_t value){
-  if(!buffer || sample_count == 0){
+void ParallelBuffer::fillSolid(uint16_t value){
+  if(!buffer || buffer_size == 0){
+    ESP_LOGE(TAG, "No buffer allocated");
     return;
   }
   
-  ESP_LOGI(TAG, "Filling buffer with solid value: 0x%04X (%d samples)", value, sample_count);
+  ESP_LOGI(TAG, "Filling buffer with solid value: 0x%04X (%d samples)", value, buffer_size);
   
-  for(size_t i = 0; i < sample_count; i++){
+  for(size_t i = 0; i < buffer_size; i++){
     buffer[i] = value;
   }
 }
 
-bool ParallelBuffer::createTiming(uint16_t* buffer, size_t sample_count,
-                                 uint32_t high_duration_ms, uint32_t low_duration_ms,
-                                 uint32_t sample_rate_hz, uint16_t high_value, uint16_t low_value){
-  if(!buffer || sample_count == 0 || sample_rate_hz == 0){
-    ESP_LOGE(TAG, "Invalid parameters");
+bool ParallelBuffer::createTiming(uint32_t high_duration_ms, uint32_t low_duration_ms,
+                                  uint32_t sample_rate_hz, uint16_t high_value, uint16_t low_value){
+  if(!buffer || buffer_size == 0 || sample_rate_hz == 0){
+    ESP_LOGE(TAG, "Invalid parameters or no buffer allocated");
     return false;
   }
   
@@ -101,13 +127,13 @@ bool ParallelBuffer::createTiming(uint16_t* buffer, size_t sample_count,
   ESP_LOGI(TAG, "Creating timing pattern:");
   ESP_LOGI(TAG, "  HIGH: %d ms -> %d samples", high_duration_ms, high_samples);
   ESP_LOGI(TAG, "  LOW:  %d ms -> %d samples", low_duration_ms, low_samples);
-  ESP_LOGI(TAG, "  Total needed: %d samples, Available: %d samples", total_needed, sample_count);
+  ESP_LOGI(TAG, "  Total needed: %d samples, Available: %d samples", total_needed, buffer_size);
   
-  if(total_needed > sample_count){
+  if(total_needed > buffer_size){
     ESP_LOGE(TAG, "Timing pattern requires %d samples but buffer only has %d", 
-             total_needed, sample_count);
+             total_needed, buffer_size);
     return false;
   }
   
-  return fillPattern(buffer, sample_count, high_samples, low_samples, high_value, low_value);
+  return fillPattern(high_samples, low_samples, high_value, low_value);
 }
