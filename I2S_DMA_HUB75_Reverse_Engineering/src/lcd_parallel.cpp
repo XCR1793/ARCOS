@@ -86,7 +86,7 @@ bool LcdParallel::init(const gpio_num_t* data_pins, const LcdParallelConfig& con
   
   /** Configure LCD control registers for 16-bit parallel mode */
   LCD_CAM.lcd_ctrl.lcd_rgb_mode_en = 0;     // i8080 interface mode
-  LCD_CAM.lcd_rgb_yuv.lcd_conv_bypass = 0;  // Bypass color conversion
+  LCD_CAM.lcd_rgb_yuv.lcd_conv_bypass = 0;  // Bypass colour conversion
   LCD_CAM.lcd_misc.lcd_next_frame_en = 0;   // Manual frame control
   LCD_CAM.lcd_misc.lcd_bk_en = 1;           // Enable blank
   
