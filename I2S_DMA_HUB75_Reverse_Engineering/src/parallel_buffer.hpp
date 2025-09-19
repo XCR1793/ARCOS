@@ -46,6 +46,22 @@ public:
   size_t getSize() const;
 
   /**
+   * @brief Set external buffer pointer directly (zero-copy)
+   * @param external_buffer Pointer to external DMA-capable buffer
+   * @param size Number of samples in the external buffer
+   * @return true if pointer set successfully, false if invalid parameters
+   * @note This does NOT take ownership - caller must manage memory
+   */
+  bool setDirectPointer(uint16_t* external_buffer, size_t size);
+
+  /**
+   * @brief Get direct write access to buffer for fast updates
+   * @return Pointer to buffer for direct writing, nullptr if not allocated
+   * @note Use with caution - no bounds checking
+   */
+  uint16_t* getDirectAccess() const;
+
+  /**
    * @brief Fill buffer with a repeating pattern
    * @param high_samples Number of samples with high_value in each cycle
    * @param low_samples Number of samples with low_value in each cycle
@@ -78,4 +94,5 @@ public:
 private:
   uint16_t* buffer;     ///< Pointer to allocated DMA buffer
   size_t buffer_size;   ///< Size of buffer in samples
+  bool owns_buffer;     ///< True if we own the buffer memory, false for external pointers
 };

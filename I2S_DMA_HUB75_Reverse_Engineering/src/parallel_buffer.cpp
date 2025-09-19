@@ -8,6 +8,7 @@ static const char* TAG = "PARALLEL_BUFFER";
 ParallelBuffer::ParallelBuffer() 
   : buffer(nullptr)
   , buffer_size(0)
+  , owns_buffer(false)
 {
 }
 
@@ -36,6 +37,7 @@ bool ParallelBuffer::alloc(size_t sample_count){
   }
   
   buffer_size = sample_count;
+  owns_buffer = true;
   ESP_LOGI(TAG, "Allocated DMA buffer: %d samples (%d bytes)", sample_count, buffer_bytes);
   
   /** Initialize to zero */
@@ -45,12 +47,13 @@ bool ParallelBuffer::alloc(size_t sample_count){
 }
 
 void ParallelBuffer::free(){
-  if(buffer){
+  if(buffer && owns_buffer){
     heap_caps_free(buffer);
     ESP_LOGI(TAG, "DMA buffer freed");
-    buffer = nullptr;
-    buffer_size = 0;
   }
+  buffer = nullptr;
+  buffer_size = 0;
+  owns_buffer = false;
 }
 
 uint16_t* ParallelBuffer::getBuffer() const {
@@ -136,4 +139,27 @@ bool ParallelBuffer::createTiming(uint32_t high_duration_ms, uint32_t low_durati
   }
   
   return fillPattern(high_samples, low_samples, high_value, low_value);
+}
+
+bool ParallelBuffer::setDirectPointer(uint16_t* external_buffer, size_t size){
+  if(!external_buffer || size == 0){
+    ESP_LOGE(TAG, "Invalid external buffer pointer or size");
+    return false;
+  }
+  
+  // Free our own buffer if we own it
+  if(buffer && owns_buffer){
+    heap_caps_free(buffer);
+  }
+  
+  buffer = external_buffer;
+  buffer_size = size;
+  owns_buffer = false;
+  
+  ESP_LOGI(TAG, "Set direct pointer: %d samples (zero-copy mode)", size);
+  return true;
+}
+
+uint16_t* ParallelBuffer::getDirectAccess() const{
+  return buffer;
 }
