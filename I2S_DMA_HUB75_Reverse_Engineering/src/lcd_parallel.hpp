@@ -14,6 +14,7 @@ struct LcdParallelConfig{
   bool invert_clock{false};            ///< Invert clock polarity (default: false)
   bool continuous_mode{true};          ///< Enable continuous looping mode (default: true)
   uint8_t data_width{14};              ///< Number of data pins to use (default: 14, max: 16)
+  gpio_num_t clock_pin{GPIO_NUM_NC};   ///< External clock output pin (default: no external clock)
 };
 
 /**
@@ -55,6 +56,37 @@ public:
    * @return true if buffer set successfully, false otherwise
    */
   bool setBuffer(uint16_t* buffer, size_t buffer_len);
+
+  /**
+   * @brief Set direct buffer pointer (zero-copy, high-speed)
+   * @param buffer_ptr Pointer to external DMA-capable buffer
+   * @param buffer_len Number of samples in buffer
+   * @return true if pointer set successfully, false otherwise
+   * @note This is fastest method - no copying, direct DMA access
+   */
+  bool setDirectBuffer(uint16_t* buffer_ptr, size_t buffer_len);
+
+  /**
+   * @brief Swap buffer pointer seamlessly without stopping transmission
+   * @param new_buffer_ptr Pointer to new DMA-capable buffer
+   * @param buffer_len Number of samples in buffer (must match current buffer size)
+   * @return true if swap successful, false otherwise
+   * @note This updates DMA descriptors on-the-fly for seamless double buffering
+   */
+  bool swapBuffer(uint16_t* new_buffer_ptr, size_t buffer_len);
+
+  /**
+   * @brief Get direct access to current buffer for in-place updates
+   * @return Pointer to current buffer, nullptr if not set
+   * @note Use for fastest possible updates - modify buffer directly
+   */
+  uint16_t* getDirectBuffer() const;
+
+  /**
+   * @brief Get current buffer size
+   * @return Number of samples in current buffer, 0 if not set
+   */
+  size_t getBufferSize() const;
 
   /**
    * @brief Start LCD parallel DMA transfer

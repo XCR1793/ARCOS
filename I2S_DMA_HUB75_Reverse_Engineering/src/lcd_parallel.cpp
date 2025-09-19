@@ -92,10 +92,10 @@ bool LcdParallel::init(const gpio_num_t* data_pins, const LcdParallelConfig& con
   
   /** Configure data format */
   LCD_CAM.lcd_user.lcd_8bits_order = 0;     // No byte swap
-  LCD_CAM.lcd_user.lcd_bit_order = 0;       // MSB first
+  LCD_CAM.lcd_user.lcd_bit_order = 0;       // MSB first (try normal bit order)
   LCD_CAM.lcd_user.lcd_2byte_en = 1;        // 16-bit mode
-  LCD_CAM.lcd_user.lcd_dummy = 1;           // Enable dummy cycles
-  LCD_CAM.lcd_user.lcd_dummy_cyclelen = 1;  // 2 dummy cycles
+  LCD_CAM.lcd_user.lcd_dummy = 0;           // Disable dummy cycles
+  LCD_CAM.lcd_user.lcd_dummy_cyclelen = 0;  // No dummy cycles
   LCD_CAM.lcd_user.lcd_cmd = 0;             // No command phase
   
   /** Enable continuous output mode */
@@ -124,6 +124,31 @@ bool LcdParallel::init(const gpio_num_t* data_pins, const LcdParallelConfig& con
       
       ESP_LOGD(TAG, "GPIO %d -> LCD_DATA_OUT%d", data_pins[i], i);
     }
+  }
+  
+  /** Configure external clock pin if specified */
+  if(this->config.clock_pin != GPIO_NUM_NC){
+    ESP_LOGI(TAG, "Configuring external clock output on GPIO %d", this->config.clock_pin);
+    
+    /** Configure clock GPIO */
+    gpio_config_t clock_conf = {
+      .pin_bit_mask = (1ULL << this->config.clock_pin),
+      .mode = GPIO_MODE_OUTPUT,
+      .pull_up_en = GPIO_PULLUP_DISABLE,
+      .pull_down_en = GPIO_PULLDOWN_DISABLE,
+      .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&clock_conf);
+    
+    /** Connect to LCD clock output signal */
+    esp_rom_gpio_connect_out_signal(this->config.clock_pin, LCD_PCLK_IDX, false, false);
+    
+    /** Set maximum drive strength for clean clock signal */
+    gpio_set_drive_capability(this->config.clock_pin, GPIO_DRIVE_CAP_3);
+    
+    ESP_LOGI(TAG, "GPIO %d -> LCD_PCLK (External Clock Output)", this->config.clock_pin);
+  } else {
+    ESP_LOGD(TAG, "No external clock pin configured - clock stays internal");
   }
   
   /** Allocate GDMA channel */
@@ -234,6 +259,63 @@ bool LcdParallel::setBuffer(uint16_t* buffer, size_t buffer_len){
   
   ESP_LOGI(TAG, "Buffer set successfully");
   return true;
+}
+
+bool LcdParallel::setDirectBuffer(uint16_t* buffer_ptr, size_t buffer_len){
+  return setBuffer(buffer_ptr, buffer_len);  // Simply call setBuffer - it already works with external pointers
+}
+
+bool LcdParallel::swapBuffer(uint16_t* new_buffer_ptr, size_t buffer_len){
+  if(!initialized){
+    ESP_LOGE(TAG, "LCD parallel not initialized");
+    return false;
+  }
+  
+  if(!new_buffer_ptr || buffer_len == 0){
+    ESP_LOGE(TAG, "Invalid buffer parameters");
+    return false;
+  }
+  
+  if(buffer_len != this->buffer_len){
+    ESP_LOGE(TAG, "Buffer size mismatch: expected %d, got %d", this->buffer_len, buffer_len);
+    return false;
+  }
+  
+  if(!dma_descriptors || desc_count == 0){
+    ESP_LOGE(TAG, "No DMA descriptors available");
+    return false;
+  }
+  
+  ESP_LOGD(TAG, "Swapping buffer seamlessly (no transmission stop)");
+  
+  this->buffer = new_buffer_ptr;  // Update buffer pointer
+  
+  /* Update DMA descriptor chain to point to new buffer */
+  uint8_t* buf_ptr = reinterpret_cast<uint8_t*>(new_buffer_ptr);
+  size_t buffer_bytes = buffer_len * sizeof(uint16_t);
+  size_t remaining = buffer_bytes;
+  const size_t max_desc_size = 4092;
+  
+  for(size_t i = 0; i < desc_count; i++){
+    size_t chunk_size = (remaining > max_desc_size) ? max_desc_size : remaining;
+    
+    dma_descriptors[i].buffer = buf_ptr;    // Update buffer pointer in descriptor
+    /* Keep other descriptor settings (owner, eof, length, next) unchanged */
+    
+    buf_ptr += chunk_size;
+    remaining -= chunk_size;
+  }
+  
+  ESP_LOGD(TAG, "Buffer swapped successfully - new buffer at %p", new_buffer_ptr);
+  return true;
+}
+
+uint16_t* LcdParallel::getDirectBuffer() const{
+  return buffer;
+}
+
+size_t LcdParallel::getBufferSize() const{
+  return buffer_len;
 }
 
 bool LcdParallel::start(){
