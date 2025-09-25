@@ -13,3 +13,46 @@ There are many sections currently being developed including but not limited to: 
 * Develop the unfinished sections
 
 ![UndaConstwuction](.assets/Undaconstwuction.png)
+
+## Project Timeline
+### Pre-Alpha (To Dos)
+* Abstraction of Pins
+* Abstraction of Protocals
+  * Digital
+  * Analog
+  * PWM
+  * I2C
+  * SPI
+  * UART
+  * Single Wire
+* Interfacing of devices using abstracted protocals
+  * ICM20948 (I2C)
+  * BME280 (I2C)
+  * 128x128 OLED
+  * HUB75
+  * WS2812B
+  * SPI SD Card
+  * INMP441 (I2C)
+  * NEO 8M
+* DMA Memory Management
+  * Memory allocation
+  * Heap allocation
+* Time Management
+  * Millis or Epochs since On Time
+  * System Delays
+  * System Timers
+  * Watchdogs
+### Alpha (To Dos)
+* Display
+  * Graphics Pipeline (From Triangles to Pixels) (Simple)
+  * Vector Shaders (Simple)
+  * Pixel Shaders (Simple)
+  * Curve to line approximation
+  * Rasterisation Engine
+* Sensors
+  * Sensor fusion
+  * Odometry
+  * Fast Fourier Transform (Audio)
+* Inputs
+  * Button tap combination
+  * Movement gestures
