@@ -71,8 +71,8 @@ namespace arcos::abstraction{
     static inline void WritePinParallel(uintptr_t pinValues){
       static_assert(PinBus::pinbank != 0, "PinBus mask cannot be zero");
 
-      for (uint8_t i = 0; i <= 46; i++){
-        if ((PinBus::pinbank >> i) & 0x1){
+      for(uint8_t i = 0; i <= 46; i++){
+        if((PinBus::pinbank >> i) & 0x1){
           gpio_set_level(static_cast<gpio_num_t>(i), (pinValues >> i) & 0x1);
         }
       }
@@ -95,8 +95,8 @@ namespace arcos::abstraction{
       static_assert(PinBus::pinbank != 0, "PinBus mask cannot be zero");
 
       uint64_t result = 0;
-      for (uint8_t i = 0; i <= 46; i++){
-        if ((PinBus::pinbank >> i) & 0x1){
+      for(uint8_t i = 0; i <= 46; i++){
+        if((PinBus::pinbank >> i) & 0x1){
           result |= (static_cast<uint64_t>(gpio_get_level(static_cast<gpio_num_t>(i))) << i);
         }
       }
@@ -178,14 +178,16 @@ namespace arcos::abstraction{
      * @note Runtime variant of SetPin()
      */
     static inline void SetPin(uintptr_t pin, gpio::GpioHalPinMode mode, gpio::GpioHalPinPull pull = gpio::GpioHalPinPull::Float){
-      if (pin > 46) return;  // Pin number out of range
+      if(pin > 46){
+        return;  // Pin number out of range
+      }
 
       gpio_config_t cfg{};
       cfg.pin_bit_mask = (1ULL << pin);
       cfg.mode = (mode == gpio::GpioHalPinMode::Output) ? GPIO_MODE_OUTPUT : GPIO_MODE_INPUT;
       cfg.intr_type = GPIO_INTR_DISABLE;
 
-      switch (pull) {
+      switch(pull) {
         case gpio::GpioHalPinPull::PullUp:
           cfg.pull_up_en = GPIO_PULLUP_ENABLE;
           cfg.pull_down_en = GPIO_PULLDOWN_DISABLE;
@@ -210,9 +212,11 @@ namespace arcos::abstraction{
      * @note Runtime variant of PullPin()
      */
     static inline void PullPin(uintptr_t pin, gpio::GpioHalPinPull pull){
-      if (pin > 46) return; // Pin number out of range
+      if(pin > 46){
+        return; // Pin number out of range
+      }
     
-      switch (pull) {
+      switch(pull) {
         case gpio::GpioHalPinPull::PullUp:
           gpio_set_pull_mode(static_cast<gpio_num_t>(pin), GPIO_PULLUP_ONLY);
           break;
@@ -232,7 +236,9 @@ namespace arcos::abstraction{
      * @note Runtime variant of WritePin()
      */
     static inline void WritePin(uintptr_t pin, bool state){
-      if (pin > 46) return; // Pin number out of range
+      if(pin > 46){
+        return; // Pin number out of range
+      }
       gpio_set_level(static_cast<gpio_num_t>(pin), state ? 1 : 0);
     }
 
@@ -243,8 +249,8 @@ namespace arcos::abstraction{
      * @note Runtime variant of WritePinParallel()
      */
     static inline void WritePinParallel(uintptr_t pinMask, uintptr_t pinValues){
-      for (uint8_t i = 0; i <= 46; i++) {
-        if ((pinMask >> i) & 0x1) {
+      for(uint8_t i = 0; i <= 46; i++) {
+        if((pinMask >> i) & 0x1) {
           gpio_set_level(static_cast<gpio_num_t>(i), (pinValues >> i) & 0x1);
         }
       }
@@ -257,7 +263,9 @@ namespace arcos::abstraction{
      * @note Runtime variant of ReadPin()
      */
     static inline bool ReadPin(uintptr_t pin){
-      if (pin > 46) return false; // Pin number out of range
+      if(pin > 46){
+        return false; // Pin number out of range
+      }
       return gpio_get_level(static_cast<gpio_num_t>(pin)) != 0;
     }
 
@@ -269,8 +277,8 @@ namespace arcos::abstraction{
      */
     static inline uintptr_t ReadPinParallel(uintptr_t pinMask){
       uintptr_t result = 0;
-      for (uint8_t i = 0; i <= 46; i++) {
-        if ((pinMask >> i) & 0x1) {
+      for(uint8_t i = 0; i <= 46; i++) {
+        if((pinMask >> i) & 0x1) {
           result |= (static_cast<uintptr_t>(gpio_get_level(static_cast<gpio_num_t>(i))) << i);
         }
       }
@@ -284,13 +292,21 @@ namespace arcos::abstraction{
      * @note Runtime variant of FastWritePin()
      */
     static inline void FastWritePin(uintptr_t pin, bool state){
-      if (pin > 46) return;
-      if (pin < 32) {
-        if (state) GPIO.out_w1ts = (1 << pin);
-        else GPIO.out_w1tc = (1 << pin);
+      if(pin > 46){
+        return;
+      }
+      if(pin < 32) {
+        if(state){
+          GPIO.out_w1ts = (1 << pin);
+        }else{
+          GPIO.out_w1tc = (1 << pin);
+        }
       } else {
-        if (state) GPIO.out1_w1ts.data = (1 << (pin - 32));
-        else GPIO.out1_w1tc.data = (1 << (pin - 32));
+        if(state){
+          GPIO.out1_w1ts.data = (1 << (pin - 32));
+        }else{
+          GPIO.out1_w1tc.data = (1 << (pin - 32));
+        }
       }
     }
 
@@ -323,7 +339,9 @@ namespace arcos::abstraction{
      * @note Runtime variant of FastReadPin()
      */
     static inline bool FastReadPin(uintptr_t pin){
-      if (pin > 46) return false; // Pin number out of range
+      if(pin > 46){
+        return false; // Pin number out of range
+      }
       uint64_t gpio64 = (static_cast<uint64_t>(GPIO.in) & 0xFFFFFFFFULL) |
                         (static_cast<uint64_t>(GPIO.in1.data) << 32);
       return (gpio64 >> pin) & 0x1;

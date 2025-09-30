@@ -55,7 +55,9 @@ namespace arcos::abstraction{
          * @brief Assign GPIO to channel
          */
         static inline void SetPinForChannel(uintptr_t channel, int gpio){
-          if(channel >= static_cast<uintptr_t>(LEDC_CHANNEL_MAX)){return;}
+          if(channel >= static_cast<uintptr_t>(LEDC_CHANNEL_MAX)){
+            return;
+          }
           channel_gpio_map_[channel] = static_cast<int8_t>(gpio);
         }
       
@@ -64,10 +66,14 @@ namespace arcos::abstraction{
          */
         template<uintptr_t ChannelNumber, uint32_t Frequency, uint8_t DutyCycle>
         static inline bool Initialise(){
-          if(!ChannelValid<ChannelNumber>()){return false;}
+          if(!ChannelValid<ChannelNumber>()){
+            return false;
+          }
           const int ch = static_cast<int>(ChannelNumber);
           const int gpio = channel_gpio_map_[ch];
-          if(gpio < 0){return false;}
+          if(gpio < 0){
+            return false;
+          }
         
           ledc_timer_config_t timer_conf{};
           timer_conf.speed_mode = LEDC_LOW_SPEED_MODE; // S3 only has low-speed mode
@@ -75,7 +81,9 @@ namespace arcos::abstraction{
           timer_conf.duty_resolution = static_cast<ledc_timer_bit_t>(DutyResolutionBits);
           timer_conf.freq_hz = static_cast<int>(Frequency);
           timer_conf.clk_cfg = LEDC_AUTO_CLK;
-          if(ledc_timer_config(&timer_conf) != ESP_OK){return false;}
+          if(ledc_timer_config(&timer_conf) != ESP_OK){
+            return false;
+          }
         
           const uint32_t max_duty = ((1u << DutyResolutionBits) - 1u);
           const uint32_t duty_val = (static_cast<uint32_t>(DutyCycle) * max_duty) / 100u;
@@ -88,7 +96,9 @@ namespace arcos::abstraction{
           ch_conf.timer_sel = timer_conf.timer_num;
           ch_conf.duty = duty_val;
           ch_conf.hpoint = 0;
-          if(ledc_channel_config(&ch_conf) != ESP_OK){return false;}
+          if(ledc_channel_config(&ch_conf) != ESP_OK){
+            return false;
+          }
         
           ledc_fade_func_install(0);
           channel_initialized_[ch] = true;
@@ -100,7 +110,9 @@ namespace arcos::abstraction{
          */
         template<uintptr_t ChannelNumber>
         static inline bool SetFrequency(uint32_t freq){
-          if(!ChannelValid<ChannelNumber>()){return false;}
+          if(!ChannelValid<ChannelNumber>()){
+            return false;
+          }
           ledc_timer_config_t timer_conf{};
           timer_conf.speed_mode = LEDC_LOW_SPEED_MODE;
           timer_conf.timer_num = ChannelToLedcTimer<ChannelNumber>();
@@ -115,16 +127,24 @@ namespace arcos::abstraction{
          */
         template<uintptr_t ChannelNumber>
         static inline bool SetDutyCycle(uint8_t duty){
-          if(!ChannelValid<ChannelNumber>()){return false;}
+          if(!ChannelValid<ChannelNumber>()){
+            return false;
+          }
           const int ch = static_cast<int>(ChannelNumber);
-          if(!channel_initialized_[ch]){return false;}
+          if(!channel_initialized_[ch]){
+            return false;
+          }
         
           const uint32_t max_duty = ((1u << DutyResolutionBits) - 1u);
           const uint32_t duty_val = (static_cast<uint32_t>(duty) * max_duty) / 100u;
         
           ledc_channel_t ledc_ch = ChannelToLedcChannel<ChannelNumber>();
-          if(ledc_set_duty(LEDC_LOW_SPEED_MODE, ledc_ch, duty_val) != ESP_OK){return false;}
-          if(ledc_update_duty(LEDC_LOW_SPEED_MODE, ledc_ch) != ESP_OK){return false;}
+          if(ledc_set_duty(LEDC_LOW_SPEED_MODE, ledc_ch, duty_val) != ESP_OK){
+            return false;
+          }
+          if(ledc_update_duty(LEDC_LOW_SPEED_MODE, ledc_ch) != ESP_OK){
+            return false;
+          }
           return true;
         }
       
@@ -133,9 +153,13 @@ namespace arcos::abstraction{
          */
         template<uintptr_t ChannelNumber>
         static inline bool Start(){
-          if(!ChannelValid<ChannelNumber>()){return false;}
+          if(!ChannelValid<ChannelNumber>()){
+            return false;
+          }
           const int ch = static_cast<int>(ChannelNumber);
-          if(!channel_initialized_[ch]){return false;}
+          if(!channel_initialized_[ch]){
+            return false;
+          }
           ledc_channel_t ledc_ch = ChannelToLedcChannel<ChannelNumber>();
           return (ledc_update_duty(LEDC_LOW_SPEED_MODE, ledc_ch) == ESP_OK);
         }
@@ -145,11 +169,17 @@ namespace arcos::abstraction{
          */
         template<uintptr_t ChannelNumber>
         static inline bool Stop(){
-          if(!ChannelValid<ChannelNumber>()){return false;}
+          if(!ChannelValid<ChannelNumber>()){
+            return false;
+          }
           const int ch = static_cast<int>(ChannelNumber);
-          if(!channel_initialized_[ch]){return false;}
+          if(!channel_initialized_[ch]){
+            return false;
+          }
           ledc_channel_t ledc_ch = ChannelToLedcChannel<ChannelNumber>();
-          if(ledc_set_duty(LEDC_LOW_SPEED_MODE, ledc_ch, 0) != ESP_OK){return false;}
+          if(ledc_set_duty(LEDC_LOW_SPEED_MODE, ledc_ch, 0) != ESP_OK){
+            return false;
+          }
           return (ledc_update_duty(LEDC_LOW_SPEED_MODE, ledc_ch) == ESP_OK);
         }
     };

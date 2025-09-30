@@ -50,7 +50,7 @@ struct HAL_PROTOCAL_SPI {
                                      gpio_num_t mosi,
                                      gpio_num_t miso,
                                      gpio_num_t sclk,
-                                     int dma_chan = SPI_DMA_CH_AUTO) {
+                                     int dma_chan = SPI_DMA_CH_AUTO){
     spi_bus_config_t buscfg = {};
     buscfg.mosi_io_num      = mosi;
     buscfg.miso_io_num      = miso;
@@ -79,8 +79,10 @@ struct HAL_PROTOCAL_SPI {
                                     spi_device_handle_t *out_handle,
                                     int clock_speed_hz = 10 * 1000 * 1000,
                                     int mode = 0,
-                                    int spics_io_num = -1) {
-    if (!out_handle) return ESP_ERR_INVALID_ARG;
+                                    int spics_io_num = -1){
+    if(!out_handle){
+      return ESP_ERR_INVALID_ARG;
+    }
 
     spi_device_interface_config_t devcfg = {};
     devcfg.clock_speed_hz = clock_speed_hz;
@@ -108,7 +110,9 @@ struct HAL_PROTOCAL_SPI {
                                    uint8_t *rx,
                                    size_t length,
                                    uint32_t timeout_ms = portMAX_DELAY) {
-    if (!handle || length == 0) return ESP_ERR_INVALID_ARG;
+    if(!handle || length == 0){
+      return ESP_ERR_INVALID_ARG;
+    }
 
     spi_transaction_t t;
     memset(&t, 0, sizeof(t));
@@ -137,16 +141,24 @@ struct HAL_PROTOCAL_SPI {
                                   uint8_t *rx,
                                   size_t length,
                                   uint32_t timeout_ms = portMAX_DELAY) {
-    if (!rx || length == 0) return ESP_ERR_INVALID_ARG;
+    if(!rx || length == 0){
+      return ESP_ERR_INVALID_ARG;
+    }
 
-    if (length <= 64) {
+    if(length <= 64) {
       uint8_t temp[64];
-      for (size_t i = 0; i < length; ++i) temp[i] = 0xFF;
+      for(size_t i = 0; i < length; ++i){
+        temp[i] = 0xFF;
+      }
       return Transfer(handle, temp, rx, length, timeout_ms);
     } else {
       uint8_t *temp = (uint8_t *)malloc(length);
-      if (!temp) return ESP_ERR_NO_MEM;
-      for (size_t i = 0; i < length; ++i) temp[i] = 0xFF;
+      if(!temp){
+        return ESP_ERR_NO_MEM;
+      }
+      for(size_t i = 0; i < length; ++i){
+        temp[i] = 0xFF;
+      }
       esp_err_t res = Transfer(handle, temp, rx, length, timeout_ms);
       free(temp);
       return res;

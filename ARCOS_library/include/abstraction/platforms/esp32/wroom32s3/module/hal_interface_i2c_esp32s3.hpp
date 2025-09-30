@@ -37,7 +37,7 @@ namespace arcos::abstraction{
                                uint32_t clock_speed_hz, 
                                uint32_t timeout_ms = 1000){
       
-      if(bus_id >= I2C_NUM_MAX) {
+      if(bus_id >= I2C_NUM_MAX){
         ESP_LOGE(TAG, "Invalid I2C bus ID: %d", bus_id);
         return HalResult::InvalidParameter;
       }
@@ -54,20 +54,20 @@ namespace arcos::abstraction{
       conf.clk_flags = I2C_SCLK_SRC_FLAG_FOR_NOMAL;
       
       esp_err_t ret = i2c_param_config(port, &conf);
-      if(ret != ESP_OK) {
+      if(ret != ESP_OK){
         ESP_LOGE(TAG, "I2C param config failed: %s", esp_err_to_name(ret));
         return HalResult::HardwareError;
       }
       
       ret = i2c_driver_install(port, conf.mode, 0, 0, 0);
-      if(ret != ESP_OK) {
+      if(ret != ESP_OK){
         ESP_LOGE(TAG, "I2C driver install failed: %s", esp_err_to_name(ret));
         return HalResult::HardwareError;
       }
       
       // Set timeout
       ret = i2c_set_timeout(port, (timeout_ms * 80000)); // Convert ms to APB ticks
-      if(ret != ESP_OK) {
+      if(ret != ESP_OK){
         ESP_LOGW(TAG, "Failed to set timeout: %s", esp_err_to_name(ret));
       }
       

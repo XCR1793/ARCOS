@@ -50,17 +50,17 @@ static const uint32_t debounceDelay = 500;  // ms
 /**
  * @brief Populate fileNames[] with files in directory.
  */
-static void list_files(const char *path) {
+static void list_files(const char *path){
   DIR *dir = opendir(path);
-  if (!dir) {
+  if(!dir){
     ESP_LOGE(TAG, "Failed to open dir: %s", path);
     return;
   }
 
   fileCount = 0;
   struct dirent *entry;
-  while ((entry = readdir(dir)) != NULL && fileCount < MAX_FILES) {
-    if (entry->d_type != DT_DIR) {
+  while((entry = readdir(dir)) != NULL && fileCount < MAX_FILES){
+    if(entry->d_type != DT_DIR){
       fileNames[fileCount] = strdup(entry->d_name);
       fileCount++;
     }
@@ -71,10 +71,10 @@ static void list_files(const char *path) {
 /**
  * @brief Print file menu with highlight.
  */
-static void print_menu() {
+static void print_menu(){
   printf("\n===== File Browser =====\n");
-  for (int i = 0; i < fileCount; i++) {
-    if (i == selectedIndex) printf("> %s\n", fileNames[i]);
+  for(int i = 0; i < fileCount; i++){
+    if(i == selectedIndex) printf("> %s\n", fileNames[i]);
     else printf("  %s\n", fileNames[i]);
   }
   printf("\nControls: [↑/↓] Navigate  [Enter] Read  [Space] Diagnostics\n");

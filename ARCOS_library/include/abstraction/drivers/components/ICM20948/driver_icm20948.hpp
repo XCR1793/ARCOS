@@ -33,12 +33,12 @@ private:
     
     // ICM20948 Registers (Bank 0)
     static constexpr uint8_t REG_WHO_AM_I = 0x00;
-    static constexpr uint8_t REG_USER_CTRL = 0x03;      // User control register
+    static constexpr uint8_t REG_USER_CTRL = 0x6A;      // User control register
     static constexpr uint8_t REG_PWR_MGMT_1 = 0x06;
     static constexpr uint8_t REG_PWR_MGMT_2 = 0x07;
     static constexpr uint8_t REG_ACCEL_XOUT_H = 0x2D;
     static constexpr uint8_t REG_GYRO_XOUT_H = 0x33;
-    static constexpr uint8_t REG_EXT_SLV_SENS_DATA_00 = 0x3B;
+    static constexpr uint8_t REG_EXT_SLV_SENS_DATA_00 = 0x49;
     static constexpr uint8_t REG_BANK_SEL = 0x7F;
     
     // Bank 2 registers  
@@ -46,11 +46,19 @@ private:
     static constexpr uint8_t REG_GYRO_CONFIG_1 = 0x01;  // Bank 2
     
     // Bank 3 registers (I2C Master)
-    static constexpr uint8_t REG_I2C_MST_CTRL = 0x01;
-    static constexpr uint8_t REG_I2C_SLV0_ADDR = 0x03;
-    static constexpr uint8_t REG_I2C_SLV0_REG = 0x04;
-    static constexpr uint8_t REG_I2C_SLV0_CTRL = 0x05;
+    static constexpr uint8_t REG_I2C_MST_CTRL = 0x24;
+    static constexpr uint8_t REG_I2C_SLV0_ADDR = 0x25;
+    static constexpr uint8_t REG_I2C_SLV0_REG = 0x26;
+    static constexpr uint8_t REG_I2C_SLV0_CTRL = 0x27;
     static constexpr uint8_t REG_I2C_SLV0_DO = 0x06;
+    static constexpr uint8_t REG_I2C_SLV4_ADDR = 0x13;
+    static constexpr uint8_t REG_I2C_SLV4_REG = 0x14;
+    static constexpr uint8_t REG_I2C_SLV4_CTRL = 0x15;
+    static constexpr uint8_t REG_I2C_SLV4_DO = 0x16;
+    static constexpr uint8_t REG_I2C_SLV4_DI = 0x17;
+    
+    // Bank 2 registers
+    static constexpr uint8_t REG_ODR_ALIGN_EN = 0x09;
     
     // Magnetometer (AK09916) constants
     static constexpr uint8_t MAG_I2C_ADDR = 0x0C;
@@ -58,6 +66,7 @@ private:
     static constexpr uint8_t MAG_REG_CNTL2 = 0x31;
     static constexpr uint8_t MAG_REG_CNTL3 = 0x32;
     static constexpr uint8_t MAG_REG_HXL = 0x11;
+    static constexpr uint8_t MAG_REG_ST1 = 0x10;
     static constexpr uint8_t MAG_REG_ST2 = 0x18;
     static constexpr uint8_t MAG_CHIP_ID = 0x09;
     

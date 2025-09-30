@@ -34,8 +34,8 @@ namespace arcos::abstraction{
        *        falls back to busy-waiting using esp_timer_get_time().
        */
       static inline void Delay(uint32_t ms){
-        if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) {
-          if (ms == 0) {
+        if(xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED){
+          if(ms == 0){
             taskYIELD();
           } else {
             vTaskDelay(pdMS_TO_TICKS(ms));
@@ -43,7 +43,7 @@ namespace arcos::abstraction{
         } else {
           const uint64_t start_us = static_cast<uint64_t>(esp_timer_get_time());
           const uint64_t wait_us  = static_cast<uint64_t>(ms) * 1000ULL;
-          while ((static_cast<uint64_t>(esp_timer_get_time()) - start_us) < wait_us) {
+          while((static_cast<uint64_t>(esp_timer_get_time()) - start_us) < wait_us){
             taskYIELD(); // cooperative multitasking in busy-wait
           }
         }
@@ -56,7 +56,7 @@ namespace arcos::abstraction{
        */
       static inline void DelayMicroseconds(uint32_t us){
         const uint64_t start_us = static_cast<uint64_t>(esp_timer_get_time());
-        while ((static_cast<uint64_t>(esp_timer_get_time()) - start_us) < static_cast<uint64_t>(us)) {
+        while((static_cast<uint64_t>(esp_timer_get_time()) - start_us) < static_cast<uint64_t>(us)){
           taskYIELD();
         }
       }

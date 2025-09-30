@@ -49,13 +49,17 @@ namespace arcos::abstraction{
       /**
        * @brief Check if the PWM channel is initialized
        */
-      static inline bool IsInitialized(){return initialized_;}
+      static inline bool IsInitialized(){
+        return initialized_;
+      }
     
       /**
        * @brief Set PWM frequency
        */
       static inline bool SetFrequency(uint32_t freq){
-        if(!initialized_){return false;}
+        if(!initialized_){
+          return false;
+        }
         return PlatformImplementation::template SetFrequency<ChannelNumber>(freq);
       }
     
@@ -63,7 +67,9 @@ namespace arcos::abstraction{
        * @brief Set PWM duty cycle
        */
       static inline bool SetDutyCycle(uint8_t duty){
-        if(!initialized_){return false;}
+        if(!initialized_){
+          return false;
+        }
         return PlatformImplementation::template SetDutyCycle<ChannelNumber>(duty);
       }
     
@@ -71,7 +77,9 @@ namespace arcos::abstraction{
        * @brief Start PWM output
        */
       static inline bool Start(){
-        if(!initialized_){return false;}
+        if(!initialized_){
+          return false;
+        }
         return PlatformImplementation::template Start<ChannelNumber>();
       }
     
@@ -79,7 +87,9 @@ namespace arcos::abstraction{
        * @brief Stop PWM output
        */
       static inline bool Stop(){
-        if(!initialized_){return false;}
+        if(!initialized_){
+          return false;
+        }
         return PlatformImplementation::template Stop<ChannelNumber>();
       }
   };
