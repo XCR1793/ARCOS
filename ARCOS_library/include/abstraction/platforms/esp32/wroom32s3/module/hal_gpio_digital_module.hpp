@@ -265,14 +265,17 @@ namespace arcos::abstraction{
      * @param state  True for HIGH, false for LOW
      * @note Runtime variant of FastWritePin()
      */
-    static inline void FastWritePin(uintptr_t pin, bool state) {
-      if (pin > 48) return; // Pin number out of range
-      if (state) {
-        GPIO.out_w1ts = (1 << pin);
-      } else {
-        GPIO.out_w1tc = (1 << pin);
-      }
+  static inline void FastWritePin(uintptr_t pin, bool state) {
+    if (pin > 48) return;
+    if (state) {
+      if (pin < 32) GPIO.out_w1ts = (1 << pin);
+      else GPIO.out1_w1ts.data = (1 << (pin - 32));
+    } else {
+      if (pin < 32) GPIO.out_w1tc = (1 << pin);
+      else GPIO.out1_w1tc.data = (1 << (pin - 32));
     }
+}
+
 
     /**
      * @brief Writes a set of pins in parallel using a faster implementation (runtime)
@@ -281,8 +284,19 @@ namespace arcos::abstraction{
      * @note Runtime variant of FastWritePinParallel()
      */
     static inline void FastWritePinParallel(uintptr_t pinMask, uintptr_t pinValues) {
-      GPIO.out_w1tc = ~pinValues & pinMask; // Clear pins that should go LOW
-      GPIO.out_w1ts = pinValues & pinMask;  // Set pins that should go HIGH
+      // Lower bank (0-31)
+      uint32_t maskLow   = static_cast<uint32_t>(pinMask & 0xFFFFFFFFULL);
+      uint32_t valuesLow = static_cast<uint32_t>(pinValues & maskLow);
+
+      GPIO.out_w1tc = maskLow & ~valuesLow; // clear low pins
+      GPIO.out_w1ts = valuesLow;            // set low pins
+
+      // Upper bank (32-48)
+      uint32_t maskHigh   = static_cast<uint32_t>((pinMask >> 32) & 0xFFFFFFFFULL);
+      uint32_t valuesHigh = static_cast<uint32_t>((pinValues >> 32) & maskHigh);
+
+      GPIO.out1_w1tc.data = maskHigh & ~valuesHigh;
+      GPIO.out1_w1ts.data = valuesHigh;
     }
 
     /**
@@ -310,6 +324,6 @@ namespace arcos::abstraction{
       return gpio64 & pinMask;
     }
   };
-}; // arcos::abstraction::HAL_GPIO_DIGITAL
+}; // arcos::abstraction
 
 #endif // ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_HAL_GPIO_DIGITAL_MODULE_HPP_
