@@ -1,8 +1,12 @@
 #pragma once
 
 #include <stdint.h>
-#include "lcd_parallel.hpp"
-#include "parallel_buffer.hpp"
+#include <cstddef>          // For size_t
+#include "driver/gpio.h"   // For gpio_num_t
+
+/** Forward declarations of abstract interfaces */
+class IParallelHardware;
+class IDmaBufferManager;
 
 /** Compile-time gamma correction table (gamma = 2.2) */
 constexpr uint8_t GAMMA_TABLE_22[32] = {
@@ -49,7 +53,24 @@ struct HUB75Config {
   int matrix_width = 64;
   int matrix_height = 32;
   
-  /** Dual display settings */
+  /** Panel expansion modes */
+  enum class ExpansionMode {
+    SINGLE,           // Single panel (64x32)
+    PARALLEL_OE,      // Multiple panels via separate OE pins (parallel addressing)
+    SERIES_CHAIN      // Multiple panels daisy-chained (series data flow)
+  };
+  
+  ExpansionMode expansion_mode = ExpansionMode::SINGLE;
+  int panel_count = 1;           // Number of panels (1-4 typical)
+  
+  /** Panel inversion settings (per-panel flip control) */
+  struct PanelInversion {
+    bool flip_horizontal = false;  // Flip panel horizontally (mirror left-right)
+    bool flip_vertical = false;    // Flip panel vertically (mirror top-bottom)
+  };
+  PanelInversion panel_inversions[4];  // Up to 4 panels supported
+  
+  /** Legacy dual display settings (deprecated, use expansion_mode) */
   bool dual_display_mode = false;   // Enable dual display spillover
   int effective_width = 64;         // Effective width (128 for dual mode)
   
@@ -109,8 +130,11 @@ public:
   HUB75Driver();
   ~HUB75Driver();
   
-  /** Initialize the driver with configuration */
+  /** Initialize the driver with configuration (uses default LCD_CAM backend) */
   bool init(const HUB75Config& config = HUB75Config{});
+  
+  /** Initialize the driver with custom hardware and buffer backends (dependency injection) */
+  bool init(const HUB75Config& config, IParallelHardware* hardware, IDmaBufferManager* buffer_manager);
   
   /** Start continuous display transmission */
   bool start();
@@ -163,10 +187,17 @@ private:
     uint8_t r, g, b;
   };
   
-  /** Hardware interfaces */
-  LcdParallel lcdInterface;
-  ParallelBuffer dmaBuffer0;
-  ParallelBuffer dmaBuffer1;
+  /** Hardware interfaces (abstraction layer) */
+  IParallelHardware* hwInterface;      // Abstract hardware interface (LCD_CAM, I2S, etc.)
+  IDmaBufferManager* bufferManager;    // Abstract buffer manager
+  bool owns_hardware;                  // Whether we own the hardware interface
+  bool owns_buffer_manager;            // Whether we own the buffer manager
+  
+  /** Default implementations (opaque pointers - concrete types only in .cpp) */
+  void* default_hw_impl;               // Opaque pointer to default hardware implementation
+  void* default_buffer_impl;           // Opaque pointer to default buffer implementation
+  
+  /** Buffer pointers */
   uint16_t* frontBuffer;
   uint16_t* backBuffer;
   

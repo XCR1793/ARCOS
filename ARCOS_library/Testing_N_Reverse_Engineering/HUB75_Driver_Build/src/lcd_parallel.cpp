@@ -53,6 +53,13 @@ bool LcdParallel::init(const gpio_num_t* data_pins, const LcdParallelConfig& con
   /** Store configuration */
   this->config = config;
   
+  /** Also populate the hw_config for interface compliance */
+  hw_config.clock_freq_hz = config.clock_freq_hz;
+  hw_config.invert_clock = config.invert_clock;
+  hw_config.continuous_mode = config.continuous_mode;
+  hw_config.data_width = config.data_width;
+  hw_config.clock_pin = config.clock_pin;
+  
   ESP_LOGI(TAG, "Initializing ESP32-S3 LCD peripheral for %d-bit parallel output", this->config.data_width);
   ESP_LOGI(TAG, "Target frequency: %d Hz", this->config.clock_freq_hz);
   
@@ -386,6 +393,22 @@ bool LcdParallel::isRunning() const {
   return running;
 }
 
-const LcdParallelConfig* LcdParallel::getConfig() const {
+const LcdParallelConfig* LcdParallel::getLegacyConfig() const {
   return initialized ? &config : nullptr;
+}
+
+const ParallelHardwareConfig* LcdParallel::getConfig() const {
+  return initialized ? &hw_config : nullptr;
+}
+
+bool LcdParallel::init(const gpio_num_t* data_pins, const ParallelHardwareConfig& config){
+  /** Convert to LcdParallelConfig and call legacy init */
+  LcdParallelConfig legacy_config;
+  legacy_config.clock_freq_hz = config.clock_freq_hz;
+  legacy_config.invert_clock = config.invert_clock;
+  legacy_config.continuous_mode = config.continuous_mode;
+  legacy_config.data_width = config.data_width;
+  legacy_config.clock_pin = config.clock_pin;
+  
+  return init(data_pins, legacy_config);
 }

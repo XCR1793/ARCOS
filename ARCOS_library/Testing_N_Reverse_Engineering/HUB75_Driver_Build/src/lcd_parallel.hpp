@@ -5,9 +5,11 @@
 #include "driver/gpio.h"
 #include "hal/dma_types.h"
 #include "esp_private/gdma.h"
+#include "parallel_hardware_interface.hpp"
 
 /**
  * @brief Configuration structure for LCD parallel interface
+ * @deprecated Use ParallelHardwareConfig instead
  */
 struct LcdParallelConfig{
   uint32_t clock_freq_hz{20000000};    ///< Target clock frequency in Hz (default: 20MHz)
@@ -18,12 +20,13 @@ struct LcdParallelConfig{
 };
 
 /**
- * @brief LCD Parallel Interface Class
+ * @brief LCD Parallel Interface Class (LCD_CAM peripheral implementation)
  * 
  * This class provides an interface for controlling the ESP32-S3 LCD_CAM peripheral
  * in parallel mode with DMA support for high-speed GPIO pattern generation.
+ * Implements the IParallelHardware interface for use with the HUB75 driver.
  */
-class LcdParallel{
+class LcdParallel : public IParallelHardware {
 public:
   /**
    * @brief Constructor
@@ -42,12 +45,20 @@ public:
   static LcdParallelConfig getDefaultConfig();
 
   /**
-   * @brief Initialize LCD parallel interface for 16-bit parallel output
+   * @brief Initialize LCD parallel interface for 16-bit parallel output (legacy)
    * @param data_pins Array of GPIO pins for data lines (must have 16 elements)
    * @param config Configuration structure with timing and mode settings
    * @return true if initialization successful, false otherwise
    */
   bool init(const gpio_num_t* data_pins, const LcdParallelConfig& config);
+  
+  /**
+   * @brief Initialize LCD parallel interface (IParallelHardware interface)
+   * @param data_pins Array of GPIO pins for data lines
+   * @param config Configuration structure with timing and mode settings
+   * @return true if initialization successful, false otherwise
+   */
+  bool init(const gpio_num_t* data_pins, const ParallelHardwareConfig& config) override;
 
   /**
    * @brief Set buffer for LCD parallel DMA transfer
@@ -55,7 +66,7 @@ public:
    * @param buffer_len Number of samples in buffer
    * @return true if buffer set successfully, false otherwise
    */
-  bool setBuffer(uint16_t* buffer, size_t buffer_len);
+  bool setBuffer(uint16_t* buffer, size_t buffer_len) override;
 
   /**
    * @brief Set direct buffer pointer (zero-copy, high-speed)
@@ -64,7 +75,7 @@ public:
    * @return true if pointer set successfully, false otherwise
    * @note This is fastest method - no copying, direct DMA access
    */
-  bool setDirectBuffer(uint16_t* buffer_ptr, size_t buffer_len);
+  bool setDirectBuffer(uint16_t* buffer_ptr, size_t buffer_len) override;
 
   /**
    * @brief Swap buffer pointer seamlessly without stopping transmission
@@ -73,43 +84,55 @@ public:
    * @return true if swap successful, false otherwise
    * @note This updates DMA descriptors on-the-fly for seamless double buffering
    */
-  bool swapBuffer(uint16_t* new_buffer_ptr, size_t buffer_len);
+  bool swapBuffer(uint16_t* new_buffer_ptr, size_t buffer_len) override;
 
   /**
    * @brief Get direct access to current buffer for in-place updates
    * @return Pointer to current buffer, nullptr if not set
    * @note Use for fastest possible updates - modify buffer directly
    */
-  uint16_t* getDirectBuffer() const;
+  uint16_t* getDirectBuffer() const override;
 
   /**
    * @brief Get current buffer size
    * @return Number of samples in current buffer, 0 if not set
    */
-  size_t getBufferSize() const;
+  size_t getBufferSize() const override;
 
   /**
    * @brief Start LCD parallel DMA transfer
    * @return true if started successfully, false otherwise
    */
-  bool start();
+  bool start() override;
 
   /**
    * @brief Stop LCD parallel DMA transfer
    */
-  void stop();
+  void stop() override;
 
   /**
    * @brief Check if LCD parallel interface is running
    * @return true if currently running, false otherwise
    */
-  bool isRunning() const;
+  bool isRunning() const override;
 
   /**
-   * @brief Get current configuration
+   * @brief Get current configuration (legacy interface)
    * @return Pointer to current configuration structure, or nullptr if not initialized
    */
-  const LcdParallelConfig* getConfig() const;
+  const LcdParallelConfig* getLegacyConfig() const;
+  
+  /**
+   * @brief Get current configuration (IParallelHardware interface)
+   * @return Pointer to current configuration structure, or nullptr if not initialized
+   */
+  const ParallelHardwareConfig* getConfig() const override;
+  
+  /**
+   * @brief Get the hardware backend type name
+   * @return String describing the hardware backend
+   */
+  const char* getBackendName() const override { return "LCD_CAM"; }
 
 private:
   /** DMA and LCD peripheral state */
@@ -119,6 +142,7 @@ private:
   bool initialized;
   bool running;
   LcdParallelConfig config;
+  ParallelHardwareConfig hw_config;  // Config for interface compliance
   uint16_t* buffer;
   size_t buffer_len;
 };

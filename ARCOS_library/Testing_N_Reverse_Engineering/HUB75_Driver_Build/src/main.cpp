@@ -183,15 +183,228 @@ void generatePlasmaPattern(HUB75Driver& display){
   ++cycles;
 }
 
+/** Animation state for moving LUT triangles */
+static float animation_time = 0.0f;
+
+/** Brightness fade control */
+static float brightness_phase = 0.0f;  // 0 to 2π for smooth sine wave
+static uint8_t global_brightness = 255;
+
+/** Helper function: Calculate barycentric coordinates and interpolate color
+ *  Returns true if point is inside triangle, with interpolated RGB color
+ */
+bool sampleTriangleColor(float px, float py, float v0_x, float v0_y, float v1_x, float v1_y, 
+                         float v2_x, float v2_y, bool is_cmy, uint8_t& r, uint8_t& g, uint8_t& b){
+  // Compute barycentric weights
+  float denom = (v1_y - v2_y) * (v0_x - v2_x) + (v2_x - v1_x) * (v0_y - v2_y);
+  if(denom == 0) return false;
+  
+  float w0 = ((v1_y - v2_y) * (px - v2_x) + (v2_x - v1_x) * (py - v2_y)) / denom;
+  float w1 = ((v2_y - v0_y) * (px - v2_x) + (v0_x - v2_x) * (py - v2_y)) / denom;
+  float w2 = 1.0f - w0 - w1;
+  
+  // Check if point is inside triangle (with small tolerance for edge anti-aliasing)
+  if(w0 >= -0.01f && w1 >= -0.01f && w2 >= -0.01f){
+    // Clamp weights to [0, 1] for color calculation
+    w0 = w0 < 0 ? 0 : (w0 > 1 ? 1 : w0);
+    w1 = w1 < 0 ? 0 : (w1 > 1 ? 1 : w1);
+    w2 = w2 < 0 ? 0 : (w2 > 1 ? 1 : w2);
+    
+    if(is_cmy){
+      // CMY triangle: v0 = CYAN, v1 = MAGENTA, v2 = YELLOW
+      r = (uint8_t)((w1 * 255 + w2 * 255) > 255 ? 255 : (w1 * 255 + w2 * 255));
+      g = (uint8_t)((w0 * 255 + w2 * 255) > 255 ? 255 : (w0 * 255 + w2 * 255));
+      b = (uint8_t)((w0 * 255 + w1 * 255) > 255 ? 255 : (w0 * 255 + w1 * 255));
+    } else {
+      // RGB triangle: v0 = RED, v1 = GREEN, v2 = BLUE
+      r = (uint8_t)(w0 * 255);
+      g = (uint8_t)(w1 * 255);
+      b = (uint8_t)(w2 * 255);
+    }
+    return true;
+  }
+  return false;
+}
+
+void drawMovingLUTTriangles(){
+  /** Clear display */
+  for(int y = 0; y < display.getHeight(); y++){
+    for(int x = 0; x < display.getWidth(); x++){
+      display.setPixel(x, y, RGB(0, 0, 0));
+    }
+  }
+  
+  const int tri_size = 28;  // 28-pixel triangle (fits well in panel with motion)
+  const int height = display.getHeight();
+  
+  /** Panel 0: RGB Triangle with 2x2 supersampling antialiasing
+   *  Equilateral-ish triangle with vertices at:
+   *  - Top vertex (center-top): RED (255, 0, 0)
+   *  - Bottom-left vertex: GREEN (0, 255, 0)
+   *  - Bottom-right vertex: BLUE (0, 0, 255)
+   */
+  
+  // Calculate smooth position using sine waves (keep as float for smooth sub-pixel motion)
+  float x_offset = 18.0f + 10.0f * sin8((uint8_t)(animation_time * 1.5f)) / 128.0f;
+  float y_offset = 2.0f + 6.0f * cos8((uint8_t)(animation_time * 2.0f)) / 128.0f;
+  
+  // Define triangle vertices (relative to base position)
+  float v0_x = tri_size / 2.0f;        // Top vertex (red)
+  float v0_y = 0.0f;
+  float v1_x = 0.0f;                    // Bottom-left vertex (green)
+  float v1_y = tri_size;
+  float v2_x = tri_size;                // Bottom-right vertex (blue)
+  float v2_y = tri_size;
+  
+  // Calculate bounding box for efficient rendering
+  int min_x = (int)(x_offset - 1);
+  int max_x = (int)(x_offset + tri_size + 1);
+  int min_y = (int)(y_offset - 1);
+  int max_y = (int)(y_offset + tri_size + 1);
+  
+  // Clamp to panel 0 bounds
+  if(min_x < 0) min_x = 0;
+  if(max_x > 63) max_x = 63;
+  if(min_y < 0) min_y = 0;
+  if(max_y >= height) max_y = height - 1;
+  
+  // Draw RGB triangle with 2x2 supersampling antialiasing
+  for(int screen_y = min_y; screen_y <= max_y; screen_y++){
+    for(int screen_x = min_x; screen_x <= max_x; screen_x++){
+      // 2x2 supersampling: sample at 4 sub-pixel locations
+      int total_r = 0, total_g = 0, total_b = 0;
+      int sample_count = 0;
+      
+      // Sample offsets: 0.25 and 0.75 within pixel for 2x2 grid
+      float offsets[2] = {0.25f, 0.75f};
+      
+      for(int sy = 0; sy < 2; sy++){
+        for(int sx = 0; sx < 2; sx++){
+          // Convert screen coordinates to triangle-local coordinates
+          float sample_x = (screen_x + offsets[sx]) - x_offset;
+          float sample_y = (screen_y + offsets[sy]) - y_offset;
+          
+          uint8_t r, g, b;
+          if(sampleTriangleColor(sample_x, sample_y, v0_x, v0_y, v1_x, v1_y, v2_x, v2_y, false, r, g, b)){
+            total_r += r;
+            total_g += g;
+            total_b += b;
+            sample_count++;
+          }
+        }
+      }
+      
+      // Average the samples for antialiasing
+      if(sample_count > 0){
+        uint8_t avg_r = total_r / sample_count;
+        uint8_t avg_g = total_g / sample_count;
+        uint8_t avg_b = total_b / sample_count;
+        
+        // Blend with background based on coverage
+        float coverage = sample_count / 4.0f;
+        avg_r = (uint8_t)(avg_r * coverage);
+        avg_g = (uint8_t)(avg_g * coverage);
+        avg_b = (uint8_t)(avg_b * coverage);
+        
+        // Apply global brightness
+        avg_r = (avg_r * global_brightness) / 255;
+        avg_g = (avg_g * global_brightness) / 255;
+        avg_b = (avg_b * global_brightness) / 255;
+        
+        display.setPixel(screen_x, screen_y, RGB(avg_r, avg_g, avg_b));
+      }
+    }
+  }
+  
+  /** Panel 1: CMY Triangle with 2x2 supersampling antialiasing
+   *  Equilateral-ish triangle with vertices at:
+   *  - Top vertex (center-top): CYAN (0, 255, 255)
+   *  - Bottom-left vertex: MAGENTA (255, 0, 255)
+   *  - Bottom-right vertex: YELLOW (255, 255, 0)
+   */
+  
+  // Different motion pattern for panel 1 (phase shifted, keep as float)
+  float x_offset1 = 82.0f + 10.0f * cos8((uint8_t)(animation_time * 1.2f)) / 128.0f;
+  float y_offset1 = 2.0f + 6.0f * sin8((uint8_t)(animation_time * 1.8f)) / 128.0f;
+  
+  // Calculate bounding box for efficient rendering
+  int min_x1 = (int)(x_offset1 - 1);
+  int max_x1 = (int)(x_offset1 + tri_size + 1);
+  int min_y1 = (int)(y_offset1 - 1);
+  int max_y1 = (int)(y_offset1 + tri_size + 1);
+  
+  // Clamp to panel 1 bounds (64-127)
+  if(min_x1 < 64) min_x1 = 64;
+  if(max_x1 > 127) max_x1 = 127;
+  if(min_y1 < 0) min_y1 = 0;
+  if(max_y1 >= height) max_y1 = height - 1;
+  
+  // Draw CMY triangle with 2x2 supersampling antialiasing
+  for(int screen_y = min_y1; screen_y <= max_y1; screen_y++){
+    for(int screen_x = min_x1; screen_x <= max_x1; screen_x++){
+      // 2x2 supersampling: sample at 4 sub-pixel locations
+      int total_r = 0, total_g = 0, total_b = 0;
+      int sample_count = 0;
+      
+      // Sample offsets: 0.25 and 0.75 within pixel for 2x2 grid
+      float offsets[2] = {0.25f, 0.75f};
+      
+      for(int sy = 0; sy < 2; sy++){
+        for(int sx = 0; sx < 2; sx++){
+          // Convert screen coordinates to triangle-local coordinates
+          float sample_x = (screen_x + offsets[sx]) - x_offset1;
+          float sample_y = (screen_y + offsets[sy]) - y_offset1;
+          
+          uint8_t r, g, b;
+          if(sampleTriangleColor(sample_x, sample_y, v0_x, v0_y, v1_x, v1_y, v2_x, v2_y, true, r, g, b)){
+            total_r += r;
+            total_g += g;
+            total_b += b;
+            sample_count++;
+          }
+        }
+      }
+      
+      // Average the samples for antialiasing
+      if(sample_count > 0){
+        uint8_t avg_r = total_r / sample_count;
+        uint8_t avg_g = total_g / sample_count;
+        uint8_t avg_b = total_b / sample_count;
+        
+        // Blend with background based on coverage
+        float coverage = sample_count / 4.0f;
+        avg_r = (uint8_t)(avg_r * coverage);
+        avg_g = (uint8_t)(avg_g * coverage);
+        avg_b = (uint8_t)(avg_b * coverage);
+        
+        // Apply global brightness
+        avg_r = (avg_r * global_brightness) / 255;
+        avg_g = (avg_g * global_brightness) / 255;
+        avg_b = (avg_b * global_brightness) / 255;
+        
+        display.setPixel(screen_x, screen_y, RGB(avg_r, avg_g, avg_b));
+      }
+    }
+  }
+  
+  // Update animation with smoother increment (smaller steps for fluid motion)
+  animation_time += 0.5f;
+  
+  // Update brightness fade: 0→255 in 1 second, 255→0 in 1 second (2 second cycle)
+  // Using time-based calculation for smooth fade independent of frame rate
+  brightness_phase += 0.1f;  // ~60 updates per second = smooth fade
+  if(brightness_phase >= 6.28318530718f) brightness_phase -= 6.28318530718f;  // Wrap at 2π
+  
+  // Calculate brightness using sine wave: 0→1→0 over 2 seconds
+  float brightness_norm = (sin8((uint8_t)(brightness_phase * 40.6f)) / 255.0f);  // 0 to 1
+  global_brightness = (uint8_t)(brightness_norm * 255);
+  
+  display.show();
+}
+
 void updatePlasmaDisplay(){
   /** Generate pattern and update display (controls both OE pins) */ 
-  static uint32_t switch_time = 0;
-  
-  /** Switch between plasma and simple patterns every 10 seconds */
-  uint32_t current_ms = esp_timer_get_time() / 1000;
-
   generatePlasmaPattern(display);
-
   display.show();
 }
 
@@ -207,6 +420,10 @@ extern "C" void app_main(){
   config.gamma_value = 2.2f;
   config.dual_display_mode = true;        // Enable dual display spillover
   config.effective_width = 128;           // 64x2 = 128 pixels wide
+  
+  /** Panel inversion: Flip panel 0 (RGB triangle) vertically */
+  config.panel_inversions[0].flip_vertical = true;   // Panel 0: flip upside down
+  config.panel_inversions[1].flip_vertical = false;  // Panel 1: normal orientation
   
   /** Use the correct working pin configuration */
   config.pins.r0_pin = 7;   // Red 0
@@ -269,26 +486,34 @@ extern "C" void app_main(){
   /** Initialise performance optimisation caches */
   initialisePerformanceCaches();
 
-  /** Main animation loop */
-  uint32_t last_update_time = 0;
+  /** Main monitoring loop */
   uint32_t last_fps_report_time = 0;
-  uint32_t last_palette_change_time = 0;
   uint32_t frame_count = 0;
   uint32_t fps_counter = 0;
-  const uint32_t frame_interval_us = 13333; // ~75 FPS target (faster than 60)
   
-  const char* palette_names[] = {"Heat", "Rainbow", "Lava", "Cloud", "Blueish"};
+  ESP_LOGI(TAG, "Animating moving LUT triangles:");
+  ESP_LOGI(TAG, "  Panel 0: RGB triangle (R=top, G=bottom-left, B=bottom-right)");
+  ESP_LOGI(TAG, "  Panel 1: CMY triangle (C=top, M=bottom-left, Y=bottom-right)");
+  ESP_LOGI(TAG, "  2x2 supersampling antialiasing for smooth edges");
+  ESP_LOGI(TAG, "  Smooth sine wave motion with barycentric color interpolation");
   
-  ESP_LOGI(TAG, "Starting plasma animation");
+  /** Animation update interval */
+  uint64_t last_animation_update = 0;
+  const uint64_t animation_update_interval = 16667;  // ~60 FPS (16.67ms per frame)
   
   while(true){
     uint64_t current_time_us = esp_timer_get_time();
     
-    /** Update frame - UNLIMITED FRAMERATE TEST */
-    updatePlasmaDisplay();
+    /** Update animation every ~16ms for smooth 60 FPS motion */
+    if(current_time_us - last_animation_update >= animation_update_interval){
+      // Draw the moving LUT triangles
+      drawMovingLUTTriangles();
+      
+      last_animation_update = current_time_us;
+    }
+    
     frame_count++;
     fps_counter++;
-    last_update_time = current_time_us;
     
     /** Report FPS every 1 second for performance testing */
     if(current_time_us - last_fps_report_time >= 1000000){
@@ -303,9 +528,10 @@ extern "C" void app_main(){
       size_t framebuffer_size = fb_width * config.matrix_height * 3;
       size_t dma_buffer_size = config.matrix_width * (config.matrix_height / 2) * config.colour_depth * 2 * 2;
       
-      ESP_LOGI(TAG, "=== MAXIMUM FPS BENCHMARK ===");
-      ESP_LOGI(TAG, "  Current FPS: %.1f (UNLIMITED)", actual_fps);
-      ESP_LOGI(TAG, "  Palette: %s", palette_names[currentPaletteIndex]);
+      ESP_LOGI(TAG, "=== LUT TRIANGLE ANIMATION STATUS ===");
+      ESP_LOGI(TAG, "  Animation FPS: %.1f", actual_fps);
+      ESP_LOGI(TAG, "  Panel 0: RGB Triangle | Panel 1: CMY Triangle");
+      ESP_LOGI(TAG, "  Animation time: %.1f", animation_time);
       ESP_LOGI(TAG, "  Frame Buffer: %d bytes", framebuffer_size);
       ESP_LOGI(TAG, "  DMA Buffers: %d bytes", dma_buffer_size);
       ESP_LOGI(TAG, "  Free RAM: %d KB / %d KB (%.1f%%)", 
@@ -317,13 +543,6 @@ extern "C" void app_main(){
       last_fps_report_time = current_time_us;
     }
     
-    /** Change palette every 5 seconds */
-    if(current_time_us - last_palette_change_time >= 5000000){
-      currentPaletteIndex = (currentPaletteIndex + 1) % NUM_PALETTES;
-      ESP_LOGI(TAG, "Switched to %s palette", palette_names[currentPaletteIndex]);
-      last_palette_change_time = current_time_us;
-    }
-    
-    vTaskDelay(pdMS_TO_TICKS(1));
+    vTaskDelay(pdMS_TO_TICKS(100));  // Check status every 100ms
   }
 }
