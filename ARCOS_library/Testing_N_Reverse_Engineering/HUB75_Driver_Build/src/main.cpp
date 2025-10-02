@@ -8,9 +8,23 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_task_wdt.h"
-#include "driver/HUB75/hub75_driver.hpp"
+
+// ARCOS-style abstraction - only 2 includes needed!
+#include "hal.hpp"       // All HAL APIs + platform implementation
+#include "drivers.hpp"   // All device drivers
+#include "drivers/components/HUB75/driver_hub75_i2s.hpp"  // I2S protocol for HUB75
+
+using namespace arcos::abstraction;
+using namespace arcos::abstraction::drivers;
 
 static const char* TAG = "HSL_DEMO";
+
+/** Platform implementations (injected into protocol) */
+static HAL_PARALLEL_DEFAULT hardware;
+static ParallelBuffer bufferManager;
+
+/** HUB75 I2S protocol implementation */
+static HUB75_I2S_Protocol i2sProtocol;
 
 /** HUB75 display driver with dual OE support */
 static HUB75Driver display;
@@ -141,6 +155,11 @@ void updateBrightness(){
 }
 
 extern "C" void app_main(){
+  // VERY FIRST THING - print something
+  vTaskDelay(pdMS_TO_TICKS(2000));
+  printf("\n\n\n*** ESP32 BOOTED - APP STARTING ***\n\n\n");
+  vTaskDelay(pdMS_TO_TICKS(100)); // Give time for serial to flush
+  
   ESP_LOGI(TAG, "=== HSL Color Scale Demo ===");
   ESP_LOGI(TAG, "Demonstrating HSL color space with BCM brightness control");
   ESP_LOGI(TAG, "");
@@ -176,8 +195,20 @@ extern "C" void app_main(){
   config.pins.oe_pin2 = 6;  // Secondary Output Enable
   config.pins.clock_pin = 37; // Clock
   
-  /** Initialise display with dual OE support */
-  if(!display.init(config)){
+  /** Calculate buffer size using driver helper method */
+  int buffer_size = HUB75Driver::calculateBufferSize(config);
+  
+  ESP_LOGI(TAG, "Calculated buffer size: %d samples (%d KB)", 
+           buffer_size, (buffer_size * 2) / 1024);
+  
+  /** Initialize I2S protocol with hardware dependencies */
+  if(!i2sProtocol.init(config, buffer_size, &hardware, &bufferManager)){
+    ESP_LOGE(TAG, "Failed to initialise I2S protocol");
+    return;
+  }
+  
+  /** Initialise display with I2S protocol */
+  if(!display.init(config, &i2sProtocol)){
     ESP_LOGE(TAG, "Failed to initialise HUB75 display");
     return;
   }

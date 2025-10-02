@@ -1,40 +1,37 @@
-#include "hub75_driver.hpp"
-#include "../../core/hal_parallel_interface.hpp"
-#include "../../core/hal_dma_buffer.hpp"
-#include "../../platform/esp32_s3/lcd_parallel.hpp"     // ESP32-S3 implementation
-#include "../../core/hal_parallel_buffer.hpp"           // Buffer management
-#include "../../core/platform_hal.hpp"
+/*****************************************************************
+ * File:      driver_hub75.cpp
+ * Category:  abstraction/drivers/components/HUB75
+ * 
+ * Purpose:    HUB75 LED matrix display driver implementation
+ *****************************************************************/
+
+#include "driver_hub75.hpp"
+#include "../../../core/platform_hal.hpp"
 #include <cstring>
 #include <cmath>
 
-static const char* TAG = "HUB75_DRIVER";
+namespace arcos::abstraction::drivers{
+
+constexpr const char* TAG = "HUB75_DRIVER";
 
 /** HUB75 protocol bit positions */
-#define R0_BIT  0
-#define G0_BIT  1
-#define B0_BIT  2
-#define R1_BIT  3
-#define G1_BIT  4
-#define B1_BIT  5
-#define LAT_BIT 6
-#define OE_BIT  7
-#define A_BIT   8
-#define B_BIT   9
-#define C_BIT   10
-#define D_BIT   11
-#define E_BIT   12
-#define OE2_BIT 13  // Second OE pin
+constexpr int R0_BIT  = 0;
+constexpr int G0_BIT  = 1;
+constexpr int B0_BIT  = 2;
+constexpr int R1_BIT  = 3;
+constexpr int G1_BIT  = 4;
+constexpr int B1_BIT  = 5;
+constexpr int LAT_BIT = 6;
+constexpr int OE_BIT  = 7;
+constexpr int A_BIT   = 8;
+constexpr int B_BIT   = 9;
+constexpr int C_BIT   = 10;
+constexpr int D_BIT   = 11;
+constexpr int E_BIT   = 12;
+constexpr int OE2_BIT = 13;  // Second OE pin
 
 HUB75Driver::HUB75Driver()
-  : hwInterface(nullptr)
-  , bufferManager(nullptr)
-  , owns_hardware(false)
-  , owns_buffer_manager(false)
-  , default_hw_impl(nullptr)
-  , default_buffer_impl(nullptr)
-  , frontBuffer(nullptr)
-  , backBuffer(nullptr)
-  , oe_pin2(PIN_NC)
+  : protocol(nullptr)
   , platform(getPlatformHAL())
   , initialized(false)
   , running(false)
@@ -54,45 +51,58 @@ HUB75Driver::~HUB75Driver(){
     platform->freeMemory(framebuffer);
   }
   
-  // Clean up owned resources (cast opaque pointers to concrete types)
-  if(owns_hardware && default_hw_impl){
-    delete static_cast<LcdParallel*>(default_hw_impl);
-  }
-  if(owns_buffer_manager && default_buffer_impl){
-    delete static_cast<ParallelBuffer*>(default_buffer_impl);
-  }
+  // NOTE: Driver does NOT own protocol
+  // Application is responsible for lifecycle management of injected protocol
 }
 
-bool HUB75Driver::init(const HUB75Config& cfg, IParallelHardware* hardware, IDmaBufferManager* buffer_mgr){
+int HUB75Driver::calculateBufferSize(const HUB75Config& config){
+  const int hub75_rows = config.matrix_height / 2;
+  
+  // Determine pixels per row based on expansion mode
+  int pixels_per_row = config.matrix_width;
+  int panel_count = config.panel_count;
+  
+  if(config.expansion_mode == HUB75Config::ExpansionMode::PARALLEL_OE){
+    pixels_per_row = config.matrix_width * panel_count;
+  } else if(config.expansion_mode == HUB75Config::ExpansionMode::SERIES_CHAIN){
+    pixels_per_row = config.matrix_width * panel_count;
+  } else if(config.dual_display_mode){
+    // Legacy dual display mode
+    pixels_per_row = 128;
+    panel_count = 2;
+  }
+  
+  // Buffer size calculation
+  int base_bcm_cycles = 31;
+  int max_brightness_scale = 64;
+  int total_bcm_samples;
+  
+  if(config.expansion_mode == HUB75Config::ExpansionMode::PARALLEL_OE || config.dual_display_mode){
+    total_bcm_samples = base_bcm_cycles * max_brightness_scale * panel_count;
+  } else {
+    total_bcm_samples = base_bcm_cycles * max_brightness_scale;
+  }
+  
+  int total_delay_samples = config.colour_depth * 3;
+  int buffer_size = hub75_rows * (config.colour_depth * pixels_per_row + total_bcm_samples + total_delay_samples);
+  
+  return buffer_size;
+}
+
+bool HUB75Driver::init(const HUB75Config& cfg, IHUB75Protocol* proto){
   if(initialized){
     PLATFORM_LOG_W(TAG, "Driver already initialised");
     return true;
   }
   
+  // Driver REQUIRES protocol to be injected by application
+  if(!proto){
+    PLATFORM_LOG_E(TAG, "Protocol implementation must be provided (cannot be null)");
+    return false;
+  }
+  
   config = cfg;
-  
-  // Use provided interfaces or create defaults
-  if(hardware){
-    hwInterface = hardware;
-    owns_hardware = false;
-  } else {
-    // Create default hardware implementation (concrete type only known here)
-    LcdParallel* lcd_impl = new LcdParallel();
-    default_hw_impl = lcd_impl;  // Store as opaque pointer
-    hwInterface = lcd_impl;       // Store as interface pointer
-    owns_hardware = true;
-  }
-  
-  if(buffer_mgr){
-    bufferManager = buffer_mgr;
-    owns_buffer_manager = false;
-  } else {
-    // Create default buffer implementation (concrete type only known here)
-    ParallelBuffer* buffer_impl = new ParallelBuffer();
-    default_buffer_impl = buffer_impl;  // Store as opaque pointer
-    bufferManager = buffer_impl;         // Store as interface pointer
-    owns_buffer_manager = true;
-  }
+  protocol = proto;
   
   /** Calculate buffer sizes for new BCM protocol
    *  For each row (height/2):
@@ -158,97 +168,19 @@ bool HUB75Driver::init(const HUB75Config& cfg, IParallelHardware* hardware, IDma
   /** Clear framebuffer */
   std::memset(framebuffer, 0, framebuffer_bytes);
   
-  /** GPIO pin mapping for HUB75 protocol */
-  int num_pins = (config.pins.oe_pin2 >= 0) ? 14 : 13;
-  
-  /** Prepare GPIO pin array for hardware interface */
-  PinNumber* lcd_data_pins = new PinNumber[num_pins];
-  
-  lcd_data_pins[0] = config.pins.r0_pin;   // R0
-  lcd_data_pins[1] = config.pins.g0_pin;   // G0
-  lcd_data_pins[2] = config.pins.b0_pin;   // B0
-  lcd_data_pins[3] = config.pins.r1_pin;   // R1
-  lcd_data_pins[4] = config.pins.g1_pin;   // G1
-  lcd_data_pins[5] = config.pins.b1_pin;   // B1
-  lcd_data_pins[6] = config.pins.lat_pin;  // LAT
-  lcd_data_pins[7] = config.pins.oe_pin;   // OE1
-  lcd_data_pins[8] = config.pins.a_pin;    // A
-  lcd_data_pins[9] = config.pins.b_pin;    // B
-  lcd_data_pins[10] = config.pins.c_pin;   // C
-  lcd_data_pins[11] = config.pins.d_pin;   // D
-  lcd_data_pins[12] = config.pins.e_pin;   // E
-  
-  if(config.pins.oe_pin2 >= 0){
-    lcd_data_pins[13] = config.pins.oe_pin2; // OE2
-  }
-
-  /** Allocate DMA buffers using buffer manager */
-  DmaBufferConfig buffer_config;
-  buffer_config.buffer_count = 2;  // Double buffering
-  buffer_config.sample_count = buffer_size;
-  buffer_config.mode = BufferMode::DOUBLE_BUFFER;
-  buffer_config.auto_allocate = true;
-  
-  if(!bufferManager->init(buffer_config)){
-    PLATFORM_LOG_E(TAG, "Failed to initialize buffer manager");
-    return false;
-  }
-
-  /** Configure hardware interface using abstract ParallelHardwareConfig */
-  ParallelHardwareConfig hw_config;
-  hw_config.clock_freq_hz = config.clock_freq_hz;
-  hw_config.invert_clock = false;
-  hw_config.continuous_mode = true;
-  hw_config.data_width = num_pins;
-  hw_config.clock_pin = config.pins.clock_pin;
-  hw_config.data_pins = lcd_data_pins;
-  hw_config.data_pin_count = num_pins;
-  
-  /** Initialise hardware interface */
-  if(!hwInterface->init(lcd_data_pins, hw_config)){
-    PLATFORM_LOG_E(TAG, "Failed to initialise hardware interface");
-    delete[] lcd_data_pins;
-    return false;
-  }
-  
-  delete[] lcd_data_pins;
-
-  /** Set up buffer pointers from buffer manager */
-  frontBuffer = bufferManager->getFrontBuffer();
-  backBuffer = bufferManager->getBackBuffer();
-  
-  if(!frontBuffer || !backBuffer){
-    PLATFORM_LOG_E(TAG, "Failed to get buffer pointers from buffer manager");
-    return false;
-  }
-  
   /** Initialize lookup tables and configurations */
   initializeLUT();
-  
-  /** Store second OE pin for reference */
-  if(config.pins.oe_pin2 != PIN_NC){
-    oe_pin2 = config.pins.oe_pin2;
-    PLATFORM_LOG_I(TAG, "Dual OE mode: Primary=%d, Secondary=%d (controlled via DMA buffer)", 
-             (int)config.pins.oe_pin, (int)config.pins.oe_pin2);
-  }
   
   initialized = true;
   
   PLATFORM_LOG_I(TAG, "HUB75 driver initialised:");
-  PLATFORM_LOG_I(TAG, "  Hardware backend: %s", hwInterface->getBackendName());
+  PLATFORM_LOG_I(TAG, "  Protocol backend: %s", protocol->getBackendName());
   PLATFORM_LOG_I(TAG, "  Matrix: %dx%d pixels", config.matrix_width, config.matrix_height);
   PLATFORM_LOG_I(TAG, "  Colour depth: %d-bit (%d planes)", config.colour_depth, config.colour_depth);
   PLATFORM_LOG_I(TAG, "  Clock: %dMHz", config.clock_freq_hz / 1000000);
   PLATFORM_LOG_I(TAG, "  Buffer size: %d samples", buffer_size);
-  PLATFORM_LOG_I(TAG, "  Buffer mode: %s", 
-           bufferManager->getMode() == BufferMode::DOUBLE_BUFFER ? "Double buffered" : "Single buffered");
   
   return true;
-}
-
-bool HUB75Driver::init(const HUB75Config& cfg){
-  // Use default implementations
-  return init(cfg, nullptr, nullptr);
 }
 
 bool HUB75Driver::start(){
@@ -262,37 +194,38 @@ bool HUB75Driver::start(){
     return true;
   }
   
-  /** Convert initial framebuffer and set up front buffer */
+  /** Convert initial framebuffer directly to protocol's back buffer */
   convertFramebufferToHUB75();
-  swapBuffers();
   
-  /** Start transmission using hardware interface */
-  if(!hwInterface->setDirectBuffer(frontBuffer, buffer_size)){
-    PLATFORM_LOG_E(TAG, "Failed to set front buffer");
+  /** Debug: Check backBuffer after conversion */
+  uint16_t* backBuf = protocol->getWritableBuffer();
+  PLATFORM_LOG_I(TAG, "DEBUG: backBuffer first 10 samples: %04X %04X %04X %04X %04X %04X %04X %04X %04X %04X",
+                backBuf[0], backBuf[1], backBuf[2], backBuf[3], backBuf[4],
+                backBuf[5], backBuf[6], backBuf[7], backBuf[8], backBuf[9]);
+  
+  /** Start protocol first - this calls setDirectBuffer() to initialize hardware buffer size */
+  if(!protocol->start()){
+    PLATFORM_LOG_E(TAG, "Failed to start protocol transmission");
     return false;
   }
   
-  if(!hwInterface->start()){
-    PLATFORM_LOG_E(TAG, "Failed to start transmission");
+  /** Now swap protocol buffers to make the filled buffer active */
+  if(!protocol->swapBuffer(nullptr, 0)){
+    PLATFORM_LOG_E(TAG, "Failed to swap protocol buffers");
     return false;
   }
   
   running = true;
   
-  /** Synchronize secondary OE pin */
-  synchronizeOEPins();
-  
-  PLATFORM_LOG_I(TAG, "HUB75 transmission started%s", 
-           (oe_pin2 != PIN_NC) ? " (dual display mode)" : "");
+  PLATFORM_LOG_I(TAG, "HUB75 transmission started");
   return true;
 }
 
 void HUB75Driver::stop(){
-  if(running && hwInterface){
-    hwInterface->stop();
+  if(running && protocol){
+    protocol->stop();
     running = false;
-    PLATFORM_LOG_I(TAG, "HUB75 transmission stopped%s", 
-             (oe_pin2 != PIN_NC) ? " (dual display mode)" : "");
+    PLATFORM_LOG_I(TAG, "HUB75 transmission stopped");
   }
 }
 
@@ -351,30 +284,14 @@ void HUB75Driver::show(){
   /** Note: We always regenerate for pixel changes, but this helps reduce
    *  unnecessary regeneration when only animating brightness */
   convertFramebufferToHUB75();
-  swapBuffers();
+  
+  /** Swap protocol buffers to present the updated frame */
+  if(!protocol->swapBuffer(nullptr, 0)){
+    PLATFORM_LOG_E(TAG, "Failed to swap buffer in protocol");
+  }
   
   /** Track brightness for next frame */
   last_bcm_brightness = bcm_brightness;
-}
-
-bool HUB75Driver::swapBuffers(){
-  /** Swap buffers in the buffer manager */
-  if(!bufferManager->swapBuffers()){
-    PLATFORM_LOG_E(TAG, "Failed to swap buffers in buffer manager");
-    return false;
-  }
-  
-  /** Update local pointers */
-  frontBuffer = bufferManager->getFrontBuffer();
-  backBuffer = bufferManager->getBackBuffer();
-  
-  /** Update hardware interface to use new front buffer */
-  if(!hwInterface->swapBuffer(frontBuffer, buffer_size)){
-    PLATFORM_LOG_E(TAG, "Failed to swap buffer in hardware interface");
-    return false;
-  }
-  
-  return true;
 }
 
 uint8_t HUB75Driver::convert8to5(uint8_t value){
@@ -398,6 +315,13 @@ bool HUB75Driver::isValidCoordinate(int x, int y) const{
 }
 
 void HUB75Driver::convertFramebufferToHUB75(){
+  /** Get writable buffer from protocol */
+  uint16_t* targetBuffer = protocol->getWritableBuffer();
+  if(!targetBuffer){
+    PLATFORM_LOG_E(TAG, "Failed to get writable buffer from protocol");
+    return;
+  }
+  
   int buffer_index = 0;
   const int hub75_rows = config.matrix_height / 2;
   int fb_width = config.effective_width;
@@ -576,7 +500,7 @@ void HUB75Driver::convertFramebufferToHUB75(){
           }
         }
         
-        backBuffer[buffer_index++] = sample;
+        targetBuffer[buffer_index++] = sample;
         
         /** BCM Timing per-panel for PARALLEL_OE mode
          *  After latching each panel, immediately apply BCM timing
@@ -623,12 +547,12 @@ void HUB75Driver::convertFramebufferToHUB75(){
             
             // Fill active cycles with OE enabled
             for(int bcm_cycle = 0; bcm_cycle < active_bcm_cycles; bcm_cycle++){
-              backBuffer[buffer_index++] = bcm_sample_on;
+              targetBuffer[buffer_index++] = bcm_sample_on;
             }
             
             // Fill remaining cycles with OE disabled
             for(int bcm_cycle = 0; bcm_cycle < inactive_bcm_cycles; bcm_cycle++){
-              backBuffer[buffer_index++] = bcm_sample_off;
+              targetBuffer[buffer_index++] = bcm_sample_off;
             }
           }
         }
@@ -661,12 +585,12 @@ void HUB75Driver::convertFramebufferToHUB75(){
         
         // Fill active cycles with OE enabled
         for(int bcm_cycle = 0; bcm_cycle < active_bcm_cycles; bcm_cycle++){
-          backBuffer[buffer_index++] = bcm_sample_on;
+          targetBuffer[buffer_index++] = bcm_sample_on;
         }
         
         // Fill remaining cycles with OE disabled
         for(int bcm_cycle = 0; bcm_cycle < inactive_bcm_cycles; bcm_cycle++){
-          backBuffer[buffer_index++] = bcm_sample_off;
+          targetBuffer[buffer_index++] = bcm_sample_off;
         }
       }
       
@@ -690,7 +614,7 @@ void HUB75Driver::convertFramebufferToHUB75(){
       
       // Add 3 delay bits to give panels time to fully discharge
       for(int i = 0; i < 3; i++){
-        backBuffer[buffer_index++] = delay_sample;
+        targetBuffer[buffer_index++] = delay_sample;
       }
     }
   }
@@ -859,10 +783,4 @@ bool HUB75Driver::isValidBufferSize(int width, int height) const{
   return (width == config.matrix_width && height == config.matrix_height);
 }
 
-void HUB75Driver::synchronizeOEPins(){
-  /** Secondary OE pin is controlled via DMA buffer bit manipulation - no GPIO calls needed */
-  if(oe_pin2 != PIN_NC){
-    PLATFORM_LOG_I(TAG, "Secondary OE pin %d synchronized via DMA buffer (bit %d)", 
-             (int)oe_pin2, OE2_BIT);
-  }
-}
+} // namespace arcos::abstraction::drivers

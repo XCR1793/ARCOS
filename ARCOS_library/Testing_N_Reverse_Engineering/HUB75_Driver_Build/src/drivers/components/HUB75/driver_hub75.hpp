@@ -1,12 +1,19 @@
-#pragma once
+/*****************************************************************
+ * File:      driver_hub75.hpp
+ * Category:  abstraction/drivers/components/HUB75
+ * 
+ * Purpose:    HUB75 LED matrix display driver abstraction
+ *****************************************************************/
+
+#ifndef ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_
+#define ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_
 
 #include <stdint.h>
-#include <cstddef>          // For size_t
-#include "../../core/platform_hal.hpp" // Platform abstraction layer
+#include <cstddef>
+#include "../../../core/platform_hal.hpp"
+#include "driver_hub75_protocol.hpp"
 
-/** Forward declarations of abstract interfaces */
-class IParallelHardware;
-class IDmaBufferManager;
+namespace arcos::abstraction::drivers{
 
 /** Compile-time gamma correction table (gamma = 2.2) */
 constexpr uint8_t GAMMA_TABLE_22[32] = {
@@ -130,11 +137,20 @@ public:
   HUB75Driver();
   ~HUB75Driver();
   
-  /** Initialize the driver with configuration (uses default LCD_CAM backend) */
-  bool init(const HUB75Config& config = HUB75Config{});
+  /** Calculate required buffer size for given configuration
+   * @param config Display configuration
+   * @return Required buffer size in samples (uint16_t)
+   * @note Use this to initialize protocol before initializing driver
+   */
+  static int calculateBufferSize(const HUB75Config& config);
   
-  /** Initialize the driver with custom hardware and buffer backends (dependency injection) */
-  bool init(const HUB75Config& config, IParallelHardware* hardware, IDmaBufferManager* buffer_manager);
+  /** Initialize the driver with injected protocol implementation
+   * @param config Display configuration 
+   * @param protocol Pointer to IHUB75Protocol implementation (REQUIRED)
+   * @return true if initialization successful
+   * @note Application must provide concrete protocol implementation via dependency injection
+   */
+  bool init(const HUB75Config& config, IHUB75Protocol* protocol);
   
   /** Start continuous display transmission */
   bool start();
@@ -191,22 +207,11 @@ private:
     uint8_t r, g, b;
   };
   
-  /** Hardware interfaces (abstraction layer) */
-  IParallelHardware* hwInterface;      // Abstract hardware interface (LCD_CAM, I2S, etc.)
-  IDmaBufferManager* bufferManager;    // Abstract buffer manager
-  bool owns_hardware;                  // Whether we own the hardware interface
-  bool owns_buffer_manager;            // Whether we own the buffer manager
+  /** Protocol interface (abstraction layer) */
+  IHUB75Protocol* protocol;            // Abstract protocol implementation (I2S, GPIO, etc.)
   
-  /** Default implementations (opaque pointers - concrete types only in .cpp) */
-  void* default_hw_impl;               // Opaque pointer to default hardware implementation
-  void* default_buffer_impl;           // Opaque pointer to default buffer implementation
-  
-  /** Buffer pointers */
-  uint16_t* frontBuffer;
-  uint16_t* backBuffer;
-  
-  /** Dual OE pin support */
-  PinNumber oe_pin2;
+  /** NOTE: Driver does NOT own injected protocol
+   *  Application is responsible for lifecycle management */
   
   /** Platform HAL reference */
   IPlatformHAL* platform;
@@ -231,7 +236,6 @@ private:
   uint8_t gamma_table[32];
   
   /** Internal methods */
-  bool swapBuffers();
   void convertFramebufferToHUB75();
   uint8_t convert8to5(uint8_t value);
   uint8_t getBitFromValue(uint8_t value5bit, int bit_plane);
@@ -243,5 +247,8 @@ private:
   bool validateConfig(const HUB75Config& cfg) const;
   void applyConfig(const HUB75Config& cfg);
   bool isValidBufferSize(int width, int height) const;
-  void synchronizeOEPins();
 };
+
+} // namespace arcos::abstraction::drivers
+
+#endif // ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_

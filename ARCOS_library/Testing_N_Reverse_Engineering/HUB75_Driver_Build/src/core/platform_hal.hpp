@@ -1,7 +1,17 @@
-#pragma once
+/*****************************************************************
+ * File:      platform_hal.hpp
+ * Category:  abstraction/core
+ * 
+ * Purpose:    Platform Hardware Abstraction Layer base definitions
+ *****************************************************************/
+
+#ifndef ARCOS_ABSTRACTION_CORE_PLATFORM_HAL_HPP_
+#define ARCOS_ABSTRACTION_CORE_PLATFORM_HAL_HPP_
 
 #include <cstdint>
 #include <cstddef>
+
+namespace arcos::abstraction{
 
 /**
  * @file platform_hal.hpp
@@ -258,3 +268,7 @@ IPlatformHAL* getPlatformHAL();
 #define PLATFORM_LOG_I(tag, format, ...) getPlatformHAL()->log(LogLevel::INFO, tag, format, ##__VA_ARGS__)
 #define PLATFORM_LOG_D(tag, format, ...) getPlatformHAL()->log(LogLevel::DEBUG, tag, format, ##__VA_ARGS__)
 #define PLATFORM_LOG_V(tag, format, ...) getPlatformHAL()->log(LogLevel::VERBOSE, tag, format, ##__VA_ARGS__)
+
+} // namespace arcos::abstraction
+
+#endif // ARCOS_ABSTRACTION_CORE_PLATFORM_HAL_HPP_
