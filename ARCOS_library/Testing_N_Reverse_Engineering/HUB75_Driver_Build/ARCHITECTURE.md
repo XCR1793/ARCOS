@@ -1,253 +1,299 @@
-# HUB75 Driver Refactoring - Abstraction Layer Architecture
+# Architecture Overview
 
-## Overview
+## System Architecture
 
-The HUB75 driver has been refactored to use abstraction layers for hardware interfaces and DMA buffer management. This allows the driver to work with different hardware backends (LCD_CAM, I2S, etc.) and buffer management strategies without changing the core driver code.
-
-## Architecture Diagram
+The HUB75 driver uses a layered architecture with clear separation of concerns:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    HUB75Driver                               │
-│  (High-level LED matrix control)                            │
-│  - Framebuffer management                                   │
-│  - Color conversion & gamma correction                      │
-│  - HUB75 protocol encoding                                  │
-└──────────────┬──────────────────────────────┬───────────────┘
-               │                              │
-               │ Uses                         │ Uses
-               ▼                              ▼
-┌──────────────────────────┐   ┌──────────────────────────────┐
-│ IParallelHardware        │   │ IDmaBufferManager            │
-│ (Abstract Interface)     │   │ (Abstract Interface)         │
-│ - init()                 │   │ - init()                     │
-│ - setBuffer()            │   │ - allocate()                 │
-│ - swapBuffer()           │   │ - getFrontBuffer()           │
-│ - start() / stop()       │   │ - getBackBuffer()            │
-│ - getBackendName()       │   │ - swapBuffers()              │
-└────────┬─────────────────┘   └────────┬─────────────────────┘
-         │                              │
-         │ Implemented by               │ Implemented by
-         │                              │
-         ▼                              ▼
-┌──────────────────────┐   ┌──────────────────────────────────┐
-│ LcdParallel          │   │ ParallelBuffer                   │
-│ (LCD_CAM backend)    │   │ (DMA buffer manager)             │
-│ - ESP32-S3 LCD_CAM   │   │ - Single/Double/Circular modes   │
-│ - GDMA support       │   │ - DMA-capable memory allocation  │
-│ - 16-bit parallel    │   │ - Buffer swapping                │
-└──────────────────────┘   └──────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│              Application Layer                  │
+│         (main.cpp - User Code)                  │
+└────────────────┬────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────┐
+│           HUB75Driver (hub75_driver.cpp)        │
+│  - High-level API (setPixel, fillScreen, etc)   │
+│  - RGB framebuffer management                   │
+│  - BCM conversion & brightness control          │
+│  - Panel inversion logic                        │
+└────┬────────────────────┬───────────────────────┘
+     │                    │
+     │              ┌─────▼──────────────────────┐
+     │              │ IDmaBufferManager          │
+     │              │  (parallel_buffer.cpp)     │
+     │              │  - Double buffering        │
+     │              │  - Buffer swapping         │
+     │              └─────┬──────────────────────┘
+     │                    │
+┌────▼────────────────────▼───────────────────────┐
+│    IParallelHardware (lcd_parallel.cpp)         │
+│  - ESP32 LCD_CAM peripheral control             │
+│  - GDMA management                              │
+│  - Hardware timing                              │
+└────────────────┬────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────┐
+│     Platform HAL (esp32_platform_impl.cpp)      │
+│  - Memory allocation                            │
+│  - GPIO control                                 │
+│  - Timing/delays                                │
+│  - CPU frequency                                │
+└────────────────┬────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────┐
+│              ESP-IDF HAL                        │
+│  (ESP32-S3 Hardware Abstraction Layer)          │
+└─────────────────────────────────────────────────┘
 ```
 
-## Key Abstractions
+## Key Components
 
-### 1. IParallelHardware Interface
+### 1. HUB75Driver (hub75_driver.cpp/.hpp)
 
-**File:** `src/parallel_hardware_interface.hpp`
+**Purpose:** Main driver class providing high-level LED matrix control
 
-This abstract interface defines the contract for any hardware peripheral that can output parallel data via DMA.
-
-**Key Methods:**
-- `init()` - Initialize hardware with pin configuration
-- `setBuffer()` / `setDirectBuffer()` - Set DMA buffer
-- `swapBuffer()` - Hot-swap buffers during transmission
-- `start()` / `stop()` - Control transmission
-- `getBackendName()` - Identify hardware backend
-
-**Current Implementation:**
-- `LcdParallel` - Uses ESP32-S3 LCD_CAM peripheral
-
-**Future Implementations:**
-- `I2sParallelDriver` - Could use I2S peripheral
-- `SpiParallelDriver` - Could use SPI peripheral
-- Custom implementations for different ESP32 variants
-
-### 2. IDmaBufferManager Interface
-
-**File:** `src/dma_buffer_manager.hpp`
-
-This abstract interface defines buffer management strategies for DMA operations.
+**Responsibilities:**
+- RGB framebuffer management (RGB888 format)
+- Pixel operations (setPixel, drawLine, fillScreen)
+- BCM (Binary Code Modulation) conversion
+- Brightness control (0-255 → 64 levels)
+- Panel inversion (flip horizontal/vertical)
+- Gamma correction (2.2)
+- Buffer coordination
 
 **Key Methods:**
-- `init()` - Initialize with buffer configuration
-- `allocate()` - Allocate DMA-capable buffers
-- `getFrontBuffer()` / `getBackBuffer()` - Get buffer pointers
-- `swapBuffers()` - Swap front/back buffers
-- `fillBuffer()` / `fillPattern()` - Utility functions
+```cpp
+bool init(const HUB75Config& config);
+bool start();
+void stop();
+void setPixel(int x, int y, RGB color);
+void fillScreen(RGB color);
+void show();
+void setBrightness(uint8_t brightness);  // 0-255
+```
 
-**Buffer Modes:**
-- `SINGLE_BUFFER` - Single buffer, no swapping
-- `DOUBLE_BUFFER` - Front/back buffers for flicker-free updates
-- `CIRCULAR_BUFFER` - Continuous loop mode
+**Data Flow:**
+```
+User calls setPixel() 
+  → Writes to RGB framebuffer
+  → User calls show()
+  → convertFramebufferToHUB75()
+    → Converts RGB → 5-bit BCM format
+    → Applies brightness (fill-up strategy)
+    → Writes to back buffer
+  → swapBuffers()
+    → Swaps front/back buffers
+    → Updates DMA descriptors
+```
 
-**Current Implementation:**
-- `ParallelBuffer` - Manages 1-N DMA buffers with flexible modes
+### 2. BCM Conversion Engine
 
-### 3. HUB75Driver (Refactored)
+**Binary Code Modulation** splits each color channel into 5 bit planes with exponential timing:
 
-**Files:** `src/hub75_driver.hpp`, `src/hub75_driver.cpp`
+```
+Bit Plane 0 (LSB): Display for 1 clock cycle
+Bit Plane 1:       Display for 2 clock cycles
+Bit Plane 2:       Display for 4 clock cycles
+Bit Plane 3:       Display for 8 clock cycles
+Bit Plane 4 (MSB): Display for 16 clock cycles
 
-The main driver now uses dependency injection to allow different backends.
+Total: 31 cycles (1+2+4+8+16) per full BCM refresh
+```
 
-**Key Changes:**
-- Uses `IParallelHardware*` instead of concrete `LcdParallel`
-- Uses `IDmaBufferManager*` instead of concrete `ParallelBuffer` instances
-- Supports two initialization modes:
-  1. `init(config)` - Uses default LCD_CAM backend
-  2. `init(config, hardware, buffer_manager)` - Custom backends via dependency injection
+**Brightness Control (Fill-Up Strategy):**
+- Buffer allocated for maximum brightness (64x base BCM)
+- Base: 31 cycles → Max: 31 × 64 = 1,984 cycles
+- Active cycles = base_length × (brightness >> 2)
+- Inactive cycles filled with OE disabled
+- Example: brightness 128 → scale 32 → 50% of cycles active
+
+### 3. Buffer Management
+
+**Double Buffering:**
+- Front buffer: DMA actively reads
+- Back buffer: CPU writes next frame
+- Atomic swap on show()
+
+**Memory Layout:**
+```
+For 2x 64x32 panels with 5-bit color:
+- Framebuffer: 128 × 32 × 3 bytes = 12,288 bytes (RGB888)
+- DMA Buffers: ~130KB each × 2 = ~260KB (BCM format)
+```
+
+### 4. Platform Abstraction Layer (HAL)
+
+**Interface:** `platform_hal.hpp` - Abstract interface
+**Implementation:** `esp32_platform_impl.cpp` - ESP32-specific
+
+**Abstracted Functions:**
+```cpp
+class IPlatformHAL {
+  virtual void* allocateMemory(size_t size, uint32_t caps);
+  virtual void freeMemory(void* ptr);
+  virtual void pinMode(PinNumber pin, PinMode mode);
+  virtual void digitalWrite(PinNumber pin, PinLevel level);
+  virtual uint64_t getMicros();
+  virtual void delayMicros(uint32_t us);
+  virtual void delayMillis(uint32_t ms);
+  virtual uint32_t getCpuFrequency();
+};
+```
 
 **Benefits:**
-- Flexibility to swap hardware backends
-- Easier testing with mock implementations
-- Support for different ESP32 variants with different peripherals
-- Cleaner separation of concerns
+- Easy porting to other platforms (RP2040, STM32, etc.)
+- No direct ESP-IDF calls in driver core
+- Testable in isolation
 
-## Usage Examples
+### 5. Hardware Interface
 
-### Default Usage (LCD_CAM Backend)
+**ESP32 LCD_CAM Peripheral:**
+- 16-bit parallel output
+- GDMA-backed transfers
+- Automatic continuous refresh
+- 20MHz clock rate
 
+**Pin Mapping:**
 ```cpp
-HUB75Driver display;
-HUB75Config config = HUB75Config::getDefault();
-
-// Uses default LCD_CAM backend automatically
-display.init(config);
-display.start();
+struct HUB75Pins {
+  PinNumber r0, g0, b0;      // Upper RGB
+  PinNumber r1, g1, b1;      // Lower RGB
+  PinNumber a, b, c, d, e;   // Row address (5 bits = 32 rows)
+  PinNumber lat;             // Latch
+  PinNumber oe;              // Output Enable 1
+  PinNumber oe2;             // Output Enable 2 (dual panel)
+  PinNumber clock;           // Clock
+};
 ```
 
-### Custom Backend Usage
+## Expansion Modes
 
-```cpp
-// Create custom hardware interface
-I2sParallelDriver* i2s_hardware = new I2sParallelDriver();
+### PARALLEL_OE (Dual Panel Mode)
+- Two panels with independent OE pins
+- Each panel clocks 64 pixels
+- BCM timing per panel (31 × 64 cycles × 2 panels)
+- Total width: 128 pixels
 
-// Create custom buffer manager
-ParallelBuffer* buffer_mgr = new ParallelBuffer();
-
-// Configure buffer manager
-DmaBufferConfig buffer_config;
-buffer_config.buffer_count = 2;
-buffer_config.mode = BufferMode::DOUBLE_BUFFER;
-buffer_mgr->init(buffer_config);
-
-// Initialize driver with custom backends
-HUB75Driver display;
-HUB75Config config = HUB75Config::getDefault();
-display.init(config, i2s_hardware, buffer_mgr);
-display.start();
+**Data Flow:**
+```
+For each row, for each bit plane:
+  Clock 64 pixels → Panel 0
+  Latch → BCM timing (OE1 active)
+  Clock 64 pixels → Panel 1  
+  Latch → BCM timing (OE2 active)
 ```
 
-## Benefits of the Abstraction
+### SERIES_CHAIN (Daisy Chain)
+- Panels connected in series
+- Single OE pin
+- Data flows through panels
+- BCM timing once at end
 
-1. **Hardware Independence**
-   - Easy to port to different ESP32 variants (S2, C3, etc.)
-   - Can use different peripherals (LCD_CAM, I2S, SPI)
-   - Backend selection at runtime
+### SINGLE (Single Panel)
+- One 64×32 panel
+- Standard operation
 
-2. **Testability**
-   - Mock implementations for unit testing
-   - Test driver logic without hardware
-   - Easier to debug and validate
+## Timing Diagrams
 
-3. **Flexibility**
-   - Different buffer strategies (single, double, circular)
-   - Custom DMA buffer allocation schemes
-   - Support for various memory constraints
+### BCM Refresh Cycle
 
-4. **Maintainability**
-   - Clear separation of concerns
-   - Hardware-specific code isolated in implementations
-   - Easier to add new features
+```
+Row 0, Plane 0 (1 cycle):
+  [PIXEL DATA: 64 clocks, OE=HIGH] → [LATCH] → [BCM: 1 cycle, OE=LOW] → [DELAY: 3 cycles]
 
-5. **Reusability**
-   - Hardware interfaces can be reused for other projects
-   - Buffer management useful beyond HUB75
-   - Modular design
+Row 0, Plane 1 (2 cycles):
+  [PIXEL DATA: 64 clocks, OE=HIGH] → [LATCH] → [BCM: 2 cycles, OE=LOW] → [DELAY: 3 cycles]
 
-## Migration Guide for Existing Code
+Row 0, Plane 2 (4 cycles):
+  [PIXEL DATA: 64 clocks, OE=HIGH] → [LATCH] → [BCM: 4 cycles, OE=LOW] → [DELAY: 3 cycles]
 
-### Old Code:
-```cpp
-LcdParallel lcdInterface;
-ParallelBuffer dmaBuffer0;
-ParallelBuffer dmaBuffer1;
+Row 0, Plane 3 (8 cycles):
+  [PIXEL DATA: 64 clocks, OE=HIGH] → [LATCH] → [BCM: 8 cycles, OE=LOW] → [DELAY: 3 cycles]
 
-lcdInterface.init(pins, config);
-dmaBuffer0.alloc(size);
-dmaBuffer1.alloc(size);
+Row 0, Plane 4 (16 cycles):
+  [PIXEL DATA: 64 clocks, OE=HIGH] → [LATCH] → [BCM: 16 cycles, OE=LOW] → [DELAY: 3 cycles]
+
+...repeat for rows 1-15 (total 16 rows, scanning upper and lower half simultaneously)
 ```
 
-### New Code (Still Supported - Legacy API):
-```cpp
-LcdParallel lcdInterface;
-ParallelBuffer dmaBuffer0;
-ParallelBuffer dmaBuffer1;
+### Brightness Fill-Up Strategy
 
-lcdInterface.init(pins, config);  // Still works
-dmaBuffer0.alloc(size);           // Still works
-dmaBuffer1.alloc(size);           // Still works
+**Traditional (broken):** Scale BCM duration → buffer size mismatch
+
+**Fill-Up (working):** Fill fixed buffer with variable OE active/inactive
+
+```
+Brightness 255 (100%):
+  [PIXEL DATA] → [LATCH] → [OE=LOW: 1984 cycles] → [OE=HIGH: 0 cycles]
+
+Brightness 128 (50%):
+  [PIXEL DATA] → [LATCH] → [OE=LOW: 992 cycles] → [OE=HIGH: 992 cycles]
+
+Brightness 64 (25%):
+  [PIXEL DATA] → [LATCH] → [OE=LOW: 496 cycles] → [OE=HIGH: 1488 cycles]
+
+Brightness 0 (0%):
+  [PIXEL DATA] → [LATCH] → [OE=LOW: 0 cycles] → [OE=HIGH: 1984 cycles]
 ```
 
-### New Code (Recommended - Using Abstractions):
-```cpp
-IParallelHardware* hardware = new LcdParallel();
-IDmaBufferManager* buffers = new ParallelBuffer();
+## Performance Characteristics
 
-ParallelHardwareConfig hw_config;
-// ... configure ...
-hardware->init(pins, hw_config);
+**Refresh Rate Calculation:**
+```
+Per row: (64 pixels × 5 planes) + (31 BCM × 64 × 5 planes) + (3 delay × 5 planes)
+       = 320 + 9,920 + 15 = 10,255 clock cycles
 
-DmaBufferConfig buf_config;
-buf_config.buffer_count = 2;
-buf_config.sample_count = size;
-buffers->init(buf_config);
+16 rows × 2 panels: 10,255 × 16 × 2 = 328,160 cycles per frame
+
+At 20MHz clock: 328,160 / 20,000,000 = ~16.4ms per frame
+Refresh rate: 1 / 0.0164s ≈ 61 Hz per full BCM cycle
+
+Apparent refresh: Much higher due to BCM interleaving (~500Hz flicker-free)
 ```
 
-## Future Enhancements
+**Memory Usage:**
+- Flash: ~251KB (driver + demo)
+- RAM: ~14KB (framebuffer + stack)
+- DMA: ~260KB (allocated from DMA-capable RAM)
 
-1. **I2S Parallel Driver**
-   - Implement `I2sParallelDriver` class
-   - Use I2S peripheral for parallel output
-   - Compare performance with LCD_CAM
+## Thread Safety
 
-2. **Advanced Buffer Strategies**
-   - Triple buffering for smoother updates
-   - Ring buffer with multiple frames
-   - Priority-based buffer allocation
+**Current State:** NOT thread-safe
 
-3. **Hardware Auto-Detection**
-   - Detect available peripherals at runtime
-   - Automatically select best backend
-   - Fallback mechanisms
+**Considerations:**
+- `setPixel()` writes directly to framebuffer
+- `show()` triggers conversion and buffer swap
+- No mutex protection
 
-4. **Performance Profiling**
-   - Add metrics collection interface
-   - Compare backend performance
-   - Optimize based on profiling data
+**Recommendations for multi-threaded use:**
+```cpp
+// Add mutex to HUB75Driver
+SemaphoreHandle_t framebuffer_mutex;
 
-## Backward Compatibility
+void setPixel(int x, int y, RGB color){
+  xSemaphoreTake(framebuffer_mutex, portMAX_DELAY);
+  // ... write to framebuffer ...
+  xSemaphoreGive(framebuffer_mutex);
+}
+```
 
-All existing code continues to work:
-- Legacy `LcdParallel` API unchanged
-- Legacy `ParallelBuffer` API unchanged
-- `HUB75Driver` default initialization uses LCD_CAM backend
-- No breaking changes to existing projects
+## Error Handling
 
-## Files Modified/Created
+**Initialization:**
+- Returns `false` on failure
+- Logs errors via ESP_LOGE
+- Safe to call `init()` multiple times
 
-### New Files:
-- `src/parallel_hardware_interface.hpp` - Hardware abstraction interface
-- `src/dma_buffer_manager.hpp` - Buffer management interface
-- `ARCHITECTURE.md` - This documentation
+**Runtime:**
+- Out-of-bounds pixel writes are silently ignored
+- Buffer swap failures logged but don't crash
+- DMA errors trigger ESP32 exception handler
 
-### Modified Files:
-- `src/lcd_parallel.hpp` - Now implements `IParallelHardware`
-- `src/lcd_parallel.cpp` - Added interface methods
-- `src/parallel_buffer.hpp` - Now implements `IDmaBufferManager`
-- `src/parallel_buffer.cpp` - Added multi-buffer support
-- `src/hub75_driver.hpp` - Uses abstract interfaces
-- `src/hub75_driver.cpp` - Dependency injection support
+## Future Improvements
 
-## Conclusion
-
-The refactored architecture provides a solid foundation for flexible, testable, and maintainable HUB75 display driver. The abstraction layers allow easy extension and modification without affecting existing functionality, while maintaining full backward compatibility with existing code.
+1. **Thread Safety:** Add mutex protection
+2. **Dirty Rectangles:** Only update changed regions
+3. **Hardware PWM:** Use OE pin PWM for brightness
+4. **Color Correction:** Per-LED calibration
+5. **Power Management:** Dynamic brightness based on content
+6. **8-bit Color:** Optional full 8-bit per channel mode

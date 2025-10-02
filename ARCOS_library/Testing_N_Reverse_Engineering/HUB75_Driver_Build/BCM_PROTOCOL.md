@@ -1,224 +1,283 @@
-# HUB75 BCM Protocol Update
+# BCM Brightness Control
 
 ## Overview
 
-The HUB75 driver protocol has been updated to implement a Binary Code Modulation (BCM) pattern for proper brightness control via the Output Enable (OE) pins.
+This document explains the **Binary Code Modulation (BCM)** protocol and the **fill-up brightness control** strategy used in the HUB75 driver.
 
-## New Protocol Structure
+## What is BCM?
 
-### Previous Protocol:
-- Organized by color plane → row → columns
-- OE control was simple on/off at end of row
-- No brightness scaling per bit plane
+**Binary Code Modulation** is a technique for creating grayscale/color depth without traditional PWM. Instead of varying the duty cycle of a single pulse, BCM splits each color value into binary bit planes with exponentially weighted display times.
 
-### New Protocol:
+### 5-Bit BCM Breakdown
+
+For 5-bit color depth (32 levels per channel):
+
 ```
-For each row (16 rows for 32-pixel height):
-  For each color buffer/bit plane (5 planes for 5-bit color):
-    - Generate 64 pixel samples (one full row width)
-    - Apply BCM pattern to OE control
-    - Add 1-bit delay with OE disabled
+Color value: 0-31 (5 bits)
+
+Bit 0 (LSB): Weight = 1  → Display for 1  time unit
+Bit 1:       Weight = 2  → Display for 2  time units
+Bit 2:       Weight = 4  → Display for 4  time units
+Bit 3:       Weight = 8  → Display for 8  time units
+Bit 4 (MSB): Weight = 16 → Display for 16 time units
+
+Total: 1 + 2 + 4 + 8 + 16 = 31 time units per complete cycle
 ```
 
-## Buffer Organization
+### Example: RGB(18, 25, 7)
 
-### Structure:
+**Red = 18 = 0b10010:**
+- Bit 4: ON  (16)
+- Bit 3: OFF (0)
+- Bit 2: OFF (0)
+- Bit 1: ON  (2)
+- Bit 0: OFF (0)
+- Display: 16 + 2 = 18 ✓
+
+**Green = 25 = 0b11001:**
+- Bit 4: ON  (16)
+- Bit 3: ON  (8)
+- Bit 2: OFF (0)
+- Bit 1: OFF (0)
+- Bit 0: ON  (1)
+- Display: 16 + 8 + 1 = 25 ✓
+
+**Blue = 7 = 0b00111:**
+- Bit 4: OFF (0)
+- Bit 3: OFF (0)
+- Bit 2: ON  (4)
+- Bit 1: ON  (2)
+- Bit 0: ON  (1)
+- Display: 4 + 2 + 1 = 7 ✓
+
+## HUB75 BCM Implementation
+
+### Buffer Structure
+
+For each row (16 rows total in 32-pixel-high panel):
+
 ```
 Row 0:
-  Bit Plane 0: [64 pixel samples] + [1 delay bit]
-  Bit Plane 1: [64 pixel samples] + [1 delay bit]
-  Bit Plane 2: [64 pixel samples] + [1 delay bit]
-  Bit Plane 3: [64 pixel samples] + [1 delay bit]
-  Bit Plane 4: [64 pixel samples] + [1 delay bit]
+  Bit Plane 0: [64 pixels × RGB data] → [Latch] → [Display 1  cycle with OE] → [Delay 3 cycles]
+  Bit Plane 1: [64 pixels × RGB data] → [Latch] → [Display 2  cycles with OE] → [Delay 3 cycles]
+  Bit Plane 2: [64 pixels × RGB data] → [Latch] → [Display 4  cycles with OE] → [Delay 3 cycles]
+  Bit Plane 3: [64 pixels × RGB data] → [Latch] → [Display 8  cycles with OE] → [Delay 3 cycles]
+  Bit Plane 4: [64 pixels × RGB data] → [Latch] → [Display 16 cycles with OE] → [Delay 3 cycles]
+
 Row 1:
-  Bit Plane 0: [64 pixel samples] + [1 delay bit]
-  ...
+  (repeat bit planes 0-4)
+  
+...
+
 Row 15:
-  ...
+  (repeat bit planes 0-4)
 ```
 
-### Buffer Size Calculation:
-```cpp
-rows = matrix_height / 2 = 16
-buffer_size = rows × color_depth × (matrix_width + 1)
-            = 16 × 5 × (64 + 1)
-            = 16 × 5 × 65
-            = 5,200 samples
-```
+### Timing Phases
 
-## BCM Pattern Implementation
+**1. Pixel Data Phase (OE disabled):**
+- Clock out RGB bits for 64 pixels
+- RGB0 (upper half) and RGB1 (lower half) clocked simultaneously
+- Row address set via A/B/C/D/E pins
+- OE HIGH (display off)
 
-### Brightness Control via OE:
+**2. Latch Phase:**
+- Pulse LAT HIGH to load shift registers into output latches
+- OE still HIGH
 
-The BCM pattern controls how long the OE (Output Enable) pin stays active for each bit plane:
+**3. BCM Display Phase (OE enabled):**
+- OE LOW (display on)
+- Hold for exponential duration:
+  - Plane 0: 1 cycle
+  - Plane 1: 2 cycles
+  - Plane 2: 4 cycles
+  - Plane 3: 8 cycles
+  - Plane 4: 16 cycles
 
-```cpp
-int bcm_length = 1 << plane;  // 2^plane cycles
+**4. Delay Phase:**
+- OE HIGH (display off)
+- 3-cycle delay to prevent ghosting
+- Allows panel to fully discharge before next bit plane
 
-Bit Plane 0: OE enabled for 1 cycle   (2^0 = 1)
-Bit Plane 1: OE enabled for 2 cycles  (2^1 = 2)
-Bit Plane 2: OE enabled for 4 cycles  (2^2 = 4)
-Bit Plane 3: OE enabled for 8 cycles  (2^3 = 8)
-Bit Plane 4: OE enabled for 16 cycles (2^4 = 16)
-```
+## Brightness Control Challenge
 
-### OE Control Logic:
+### The Problem
 
-```cpp
-// OE is ACTIVE LOW: 0 = ON, 1 = OFF
-if(col >= bcm_length){
-  sample |= (1 << OE_BIT);      // Disable OE (high)
-  sample |= (1 << OE2_BIT);     // Disable second OE (dual panel)
-}
-// else: OE stays low (enabled) during BCM period
-```
-
-### Visual Representation:
-
-For a 64-pixel row with 5-bit color:
-
-```
-Bit Plane 0 (LSB):
-[ON][OFF][OFF][OFF][OFF]...[OFF] + [DELAY]
- ^    ^
- |    +-- OE disabled for remaining 63 pixels
- +------- OE enabled for 1 pixel (bcm_length = 1)
-
-Bit Plane 1:
-[ON][ON][OFF][OFF][OFF]...[OFF] + [DELAY]
- ^    ^    ^
- +----+----+-- OE enabled for 2 pixels (bcm_length = 2)
-
-Bit Plane 2:
-[ON][ON][ON][ON][OFF]...[OFF] + [DELAY]
- ^-----------^
- OE enabled for 4 pixels (bcm_length = 4)
-
-Bit Plane 3:
-[ON][ON]...[ON (8x)][OFF]...[OFF (56x)] + [DELAY]
-
-Bit Plane 4 (MSB):
-[ON][ON]...[ON (16x)][OFF]...[OFF (48x)] + [DELAY]
-```
-
-## Ghosting Prevention
-
-### 1-Bit Delay Between Color Buffers:
-
-After each color buffer (bit plane), a delay sample is inserted with:
-- **Address lines**: Maintained (same row)
-- **OE pins**: Disabled (HIGH)
-- **Latch**: Cleared
-- **Data bits**: All zero
-
-This prevents ghosting artifacts when transitioning between bit planes.
+Traditional approach: Scale BCM timing directly
 
 ```cpp
-// Delay sample structure
-uint16_t delay_sample = 0;
-delay_sample |= address_bits;    // Keep row address
-delay_sample |= (1 << OE_BIT);   // OE disabled
-delay_sample |= (1 << OE2_BIT);  // OE2 disabled
-// No latch, no data
+// WRONG - breaks buffer allocation
+int bcm_length = (1 << plane) * brightness_scale;
 ```
 
-## Brightness Scaling
+**Why this fails:**
+- DMA buffer size pre-allocated for fixed timing (31 cycles)
+- Changing `bcm_length` causes buffer overflow/underflow
+- Buffer calculation:
+  ```cpp
+  total_bcm_samples = 31 * panel_count;  // Fixed!
+  ```
 
-The BCM pattern creates proper brightness scaling:
+### The Solution: Fill-Up Strategy
 
-```
-Value    Bit Pattern    Brightness
-  0      00000         Dark (0/31)
-  1      00001         1/31 brightness
-  2      00010         2/31 brightness
-  3      00011         3/31 brightness
-  ...
-  15     01111         15/31 brightness
-  31     11111         Full brightness (31/31)
-```
+**Concept:** Allocate buffer for maximum brightness, fill only needed cycles with OE active.
 
-Each bit contributes proportionally to total brightness:
-- Bit 0 (LSB): +1 unit
-- Bit 1: +2 units  
-- Bit 2: +4 units
-- Bit 3: +8 units
-- Bit 4 (MSB): +16 units
+**Implementation:**
 
-Total: 1+2+4+8+16 = 31 units = full brightness
+1. **Allocate for maximum:**
+   ```cpp
+   int base_bcm_cycles = 31;          // 1+2+4+8+16
+   int max_brightness_scale = 64;     // 64 levels
+   int total_bcm_samples = base_bcm_cycles * max_brightness_scale * panel_count;
+   // = 31 × 64 × 2 = 3,968 cycles per row
+   ```
 
-## Dual Panel Support
+2. **Fill based on brightness:**
+   ```cpp
+   int base_bcm_length = 1 << plane;  // 1, 2, 4, 8, or 16
+   
+   // Map 0-255 brightness to 0-63 scale
+   int brightness_scale = bcm_brightness >> 2;
+   
+   // Calculate cycles
+   int max_bcm_cycles = base_bcm_length * 64;
+   int active_bcm_cycles = base_bcm_length * brightness_scale;
+   int inactive_bcm_cycles = max_bcm_cycles - active_bcm_cycles;
+   ```
 
-Both OE pins (OE_BIT and OE2_BIT) follow the same BCM pattern:
+3. **Write buffer:**
+   ```cpp
+   // Fill active cycles (OE enabled - display on)
+   uint16_t bcm_sample_on = (address_bits) | (OE_BIT = 0);
+   for(int i = 0; i < active_bcm_cycles; i++){
+     backBuffer[buffer_index++] = bcm_sample_on;
+   }
+   
+   // Fill inactive cycles (OE disabled - display off)
+   uint16_t bcm_sample_off = (address_bits) | (OE_BIT = 1);
+   for(int i = 0; i < inactive_bcm_cycles; i++){
+     backBuffer[buffer_index++] = bcm_sample_off;
+   }
+   ```
+
+### Brightness Examples
+
+**Brightness 255 (maximum):**
+- Scale: 255 >> 2 = 63
+- Plane 0: 1 × 63 = 63 active, 1 inactive
+- Plane 4: 16 × 63 = 1008 active, 16 inactive
+- Result: Near-maximum brightness
+
+**Brightness 128 (50%):**
+- Scale: 128 >> 2 = 32
+- Plane 0: 1 × 32 = 32 active, 32 inactive
+- Plane 4: 16 × 32 = 512 active, 512 inactive
+- Result: 50% brightness
+
+**Brightness 64 (25%):**
+- Scale: 64 >> 2 = 16
+- Plane 0: 1 × 16 = 16 active, 48 inactive
+- Plane 4: 16 × 16 = 256 active, 768 inactive
+- Result: 25% brightness
+
+**Brightness 0 (off):**
+- Scale: 0 >> 2 = 0
+- All planes: 0 active, all inactive
+- Result: Display off
+
+## Advantages of Fill-Up Strategy
+
+✅ **Fixed Buffer Size:** No reallocation needed
+✅ **Smooth Brightness:** 64 distinct levels (0-63)
+✅ **No Quantization:** Full color depth maintained at all brightness levels
+✅ **DMA-Safe:** Buffer size always matches DMA descriptor setup
+✅ **Flicker-Free:** Consistent timing, smooth transitions
+
+## Comparison to Pixel Multiplication
+
+### Pixel Multiplication (Old Method)
 
 ```cpp
-// Panel 0: columns 0-63 → OE pin 35
-// Panel 1: columns 64-127 → OE pin 6 (OE2_BIT)
-
-if(col >= bcm_length){
-  sample |= (1 << OE_BIT);   // Disable both panels
-  if(config.pins.oe_pin2 >= 0){
-    sample |= (1 << OE2_BIT);
-  }
-}
+// Apply brightness to pixel values
+uint8_t r_scaled = (pixel.r * brightness) / 255;
+uint8_t g_scaled = (pixel.g * brightness) / 255;
+uint8_t b_scaled = (pixel.b * brightness) / 255;
 ```
 
-Both panels receive the same BCM timing but display different data (left 64 pixels vs right 64 pixels of framebuffer).
+**Problems:**
+- ❌ Loses bit depth at low brightness
+- ❌ Causes color quantization (blocky gradients)
+- ❌ Integer rounding errors
+- ❌ Example: RGB(1,1,1) at 50% → (0,0,0) - disappears!
 
-## Test Pattern
+### Fill-Up Strategy (Current Method)
 
-The test pattern draws:
-- **Panel 0 (columns 0-63)**: Red rectangle (RGB: 255, 0, 0)
-- **Panel 1 (columns 64-127)**: Blue rectangle (RGB: 0, 0, 255)
+```cpp
+// Keep full pixel values, control OE timing
+display.setPixel(x, y, RGB(255, 128, 64));  // Full values
+display.setBrightness(128);                 // Control via BCM
+```
 
-This validates:
-1. Dual panel addressing works correctly
-2. BCM brightness scaling is correct (full brightness)
-3. Color data routing is correct
-4. OE control is synchronized
+**Benefits:**
+- ✅ Full 5-bit color depth at all brightness levels
+- ✅ Smooth gradients
+- ✅ No quantization artifacts
+- ✅ True linear brightness response
 
-## Benefits of New Protocol
+## Why 64 Levels?
 
-1. **Proper Brightness Control**: BCM provides linear brightness scaling
-2. **Reduced Ghosting**: 1-bit delay prevents artifacts between bit planes
-3. **Better Color Accuracy**: Each bit plane gets proportional display time
-4. **Hardware Efficiency**: OE pins control brightness without PWM flicker
-5. **Dual Panel Support**: Both panels receive synchronized BCM timing
+The 64-level resolution comes from the relationship between pixel clocking and BCM timing:
 
-## Technical Notes
+- **64 pixels** clocked per row
+- **64 clock cycles** to clock out one row
+- Natural "bank" of **64 time units** available
+- Brightness can utilize up to **64× base BCM timing**
 
-- **Clock Speed**: 10 MHz default (adjustable via config)
-- **Refresh Rate**: Depends on buffer size and clock speed
-- **Color Depth**: 5-bit per channel (15-bit total RGB)
-- **Gamma Correction**: Applied in software before BCM encoding
-- **Memory Usage**: ~10KB for dual-buffered DMA (5200 samples × 2 bytes × 2 buffers)
+Could we use 255 levels?
+- Yes, but requires 255× buffer size (too large)
+- 64 levels provides good perceptual resolution
+- Human eye can barely distinguish more than 64 brightness levels
 
-## Code Changes Summary
+## Performance Impact
 
-### Modified Functions:
-1. `convertFramebufferToHUB75()` - Implements new BCM protocol
-2. Buffer size calculation - Accounts for delay bits
-3. `drawTestRectangles()` - New test pattern function
-4. `main()` - Calls test pattern instead of plasma animation
+**Memory:**
+- Old (31× base): ~11KB per buffer
+- New (64× base): ~130KB per buffer (12× larger)
+- Still fits comfortably in ESP32-S3 SRAM
 
-### Key Constants:
-- `config.matrix_width = 64` - Pixels per row
-- `config.matrix_height = 32` - Total panel height
-- `hub75_rows = 16` - Addressable rows (height/2)
-- `config.colour_depth = 5` - Bit planes for BCM
-- Delay bits: 1 per color buffer
+**Speed:**
+- No performance impact
+- DMA transfers same amount of data
+- Buffer generation slightly longer (more cycles to fill)
+- Imperceptible to human eye
 
-## Expected Results
+**Power:**
+- Brightness directly affects power consumption
+- Lower brightness = less LED on-time = lower power
+- Exponential relationship (50% brightness ≠ 50% power)
 
-When running the test pattern:
-- Left panel (0-63) should display solid red
-- Right panel (64-127) should display solid blue
-- No visible flickering due to BCM
-- Brightness should be uniform across both panels
-- No ghosting artifacts between bit planes
+## Code Reference
 
-## Future Enhancements
+**Buffer Allocation:**
+`hub75_driver.cpp` lines ~125-147
 
-1. **Adaptive BCM**: Adjust BCM lengths based on ambient light
-2. **Temporal Dithering**: Add sub-bit brightness levels
-3. **HDR Support**: Extended BCM patterns for higher dynamic range
-4. **Power Optimization**: Disable OE during blanking for power saving
+**Fill-Up Implementation:**
+`hub75_driver.cpp` lines ~570-650
+
+**Brightness API:**
+`hub75_driver.cpp` lines ~293-295
+
+## Future Improvements
+
+**Possible Enhancements:**
+1. **Hardware PWM on OE:** Use ESP32 LEDC for brightness
+2. **Adaptive Scaling:** Dynamic brightness based on content
+3. **Per-Panel Brightness:** Independent control via dual OE
+4. **8-bit BCM:** Full 256-level depth (requires 8 bit planes)
+
+**Power Optimization:**
+```cpp
+// Calculate actual on-time for power estimation
+float on_time_ratio = (float)brightness_scale / 64.0f;
+float power_estimate = base_power * on_time_ratio;
+```
