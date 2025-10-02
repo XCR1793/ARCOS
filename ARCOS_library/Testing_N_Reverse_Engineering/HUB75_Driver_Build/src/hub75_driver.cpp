@@ -3,9 +3,7 @@
 #include "dma_buffer_manager.hpp"
 #include "lcd_parallel.hpp"          // Concrete implementation
 #include "parallel_buffer.hpp"       // Concrete implementation
-#include "esp_log.h"
-#include "esp_heap_caps.h"
-#include "driver/gpio.h"
+#include "platform_hal.hpp"
 #include <cstring>
 #include <cmath>
 
@@ -36,7 +34,8 @@ HUB75Driver::HUB75Driver()
   , default_buffer_impl(nullptr)
   , frontBuffer(nullptr)
   , backBuffer(nullptr)
-  , oe_pin2(GPIO_NUM_NC)
+  , oe_pin2(PIN_NC)
+  , platform(getPlatformHAL())
   , initialized(false)
   , running(false)
   , framebuffer(nullptr)
@@ -49,8 +48,8 @@ HUB75Driver::HUB75Driver()
 
 HUB75Driver::~HUB75Driver(){
   stop();
-  if(framebuffer){
-    heap_caps_free(framebuffer);
+  if(framebuffer && platform){
+    platform->freeMemory(framebuffer);
   }
   
   // Clean up owned resources (cast opaque pointers to concrete types)
@@ -64,7 +63,7 @@ HUB75Driver::~HUB75Driver(){
 
 bool HUB75Driver::init(const HUB75Config& cfg, IParallelHardware* hardware, IDmaBufferManager* buffer_mgr){
   if(initialized){
-    ESP_LOGW(TAG, "Driver already initialised");
+    PLATFORM_LOG_W(TAG, "Driver already initialised");
     return true;
   }
   
@@ -142,9 +141,9 @@ bool HUB75Driver::init(const HUB75Config& cfg, IParallelHardware* hardware, IDma
   /** Allocate framebuffer */
   int fb_width = config.dual_display_mode ? config.effective_width : config.matrix_width;
   size_t framebuffer_bytes = fb_width * config.matrix_height * sizeof(RGBPixel);
-  framebuffer = static_cast<RGBPixel*>(heap_caps_malloc(framebuffer_bytes, MALLOC_CAP_8BIT));
+  framebuffer = static_cast<RGBPixel*>(platform->allocateMemory(framebuffer_bytes, MEM_CAP_DEFAULT));
   if(!framebuffer){
-    ESP_LOGE(TAG, "Failed to allocate framebuffer (%d bytes)", framebuffer_bytes);
+    PLATFORM_LOG_E(TAG, "Failed to allocate framebuffer (%d bytes)", framebuffer_bytes);
     return false;
   }
   
@@ -155,24 +154,24 @@ bool HUB75Driver::init(const HUB75Config& cfg, IParallelHardware* hardware, IDma
   int num_pins = (config.pins.oe_pin2 >= 0) ? 14 : 13;
   
   /** Prepare GPIO pin array for hardware interface */
-  gpio_num_t* lcd_data_pins = new gpio_num_t[num_pins];
+  PinNumber* lcd_data_pins = new PinNumber[num_pins];
   
-  lcd_data_pins[0] = static_cast<gpio_num_t>(config.pins.r0_pin);   // R0
-  lcd_data_pins[1] = static_cast<gpio_num_t>(config.pins.g0_pin);   // G0
-  lcd_data_pins[2] = static_cast<gpio_num_t>(config.pins.b0_pin);   // B0
-  lcd_data_pins[3] = static_cast<gpio_num_t>(config.pins.r1_pin);   // R1
-  lcd_data_pins[4] = static_cast<gpio_num_t>(config.pins.g1_pin);   // G1
-  lcd_data_pins[5] = static_cast<gpio_num_t>(config.pins.b1_pin);   // B1
-  lcd_data_pins[6] = static_cast<gpio_num_t>(config.pins.lat_pin);  // LAT
-  lcd_data_pins[7] = static_cast<gpio_num_t>(config.pins.oe_pin);   // OE1
-  lcd_data_pins[8] = static_cast<gpio_num_t>(config.pins.a_pin);    // A
-  lcd_data_pins[9] = static_cast<gpio_num_t>(config.pins.b_pin);    // B
-  lcd_data_pins[10] = static_cast<gpio_num_t>(config.pins.c_pin);   // C
-  lcd_data_pins[11] = static_cast<gpio_num_t>(config.pins.d_pin);   // D
-  lcd_data_pins[12] = static_cast<gpio_num_t>(config.pins.e_pin);   // E
+  lcd_data_pins[0] = config.pins.r0_pin;   // R0
+  lcd_data_pins[1] = config.pins.g0_pin;   // G0
+  lcd_data_pins[2] = config.pins.b0_pin;   // B0
+  lcd_data_pins[3] = config.pins.r1_pin;   // R1
+  lcd_data_pins[4] = config.pins.g1_pin;   // G1
+  lcd_data_pins[5] = config.pins.b1_pin;   // B1
+  lcd_data_pins[6] = config.pins.lat_pin;  // LAT
+  lcd_data_pins[7] = config.pins.oe_pin;   // OE1
+  lcd_data_pins[8] = config.pins.a_pin;    // A
+  lcd_data_pins[9] = config.pins.b_pin;    // B
+  lcd_data_pins[10] = config.pins.c_pin;   // C
+  lcd_data_pins[11] = config.pins.d_pin;   // D
+  lcd_data_pins[12] = config.pins.e_pin;   // E
   
   if(config.pins.oe_pin2 >= 0){
-    lcd_data_pins[13] = static_cast<gpio_num_t>(config.pins.oe_pin2); // OE2
+    lcd_data_pins[13] = config.pins.oe_pin2; // OE2
   }
 
   /** Allocate DMA buffers using buffer manager */
@@ -183,7 +182,7 @@ bool HUB75Driver::init(const HUB75Config& cfg, IParallelHardware* hardware, IDma
   buffer_config.auto_allocate = true;
   
   if(!bufferManager->init(buffer_config)){
-    ESP_LOGE(TAG, "Failed to initialize buffer manager");
+    PLATFORM_LOG_E(TAG, "Failed to initialize buffer manager");
     return false;
   }
 
@@ -193,13 +192,13 @@ bool HUB75Driver::init(const HUB75Config& cfg, IParallelHardware* hardware, IDma
   hw_config.invert_clock = false;
   hw_config.continuous_mode = true;
   hw_config.data_width = num_pins;
-  hw_config.clock_pin = static_cast<gpio_num_t>(config.pins.clock_pin);
+  hw_config.clock_pin = config.pins.clock_pin;
   hw_config.data_pins = lcd_data_pins;
   hw_config.data_pin_count = num_pins;
   
   /** Initialise hardware interface */
   if(!hwInterface->init(lcd_data_pins, hw_config)){
-    ESP_LOGE(TAG, "Failed to initialise hardware interface");
+    PLATFORM_LOG_E(TAG, "Failed to initialise hardware interface");
     delete[] lcd_data_pins;
     return false;
   }
@@ -211,7 +210,7 @@ bool HUB75Driver::init(const HUB75Config& cfg, IParallelHardware* hardware, IDma
   backBuffer = bufferManager->getBackBuffer();
   
   if(!frontBuffer || !backBuffer){
-    ESP_LOGE(TAG, "Failed to get buffer pointers from buffer manager");
+    PLATFORM_LOG_E(TAG, "Failed to get buffer pointers from buffer manager");
     return false;
   }
   
@@ -219,21 +218,21 @@ bool HUB75Driver::init(const HUB75Config& cfg, IParallelHardware* hardware, IDma
   initializeLUT();
   
   /** Store second OE pin for reference */
-  if(config.pins.oe_pin2 >= 0){
-    oe_pin2 = static_cast<gpio_num_t>(config.pins.oe_pin2);
-    ESP_LOGI(TAG, "Dual OE mode: Primary=%d, Secondary=%d (controlled via DMA buffer)", 
-             config.pins.oe_pin, config.pins.oe_pin2);
+  if(config.pins.oe_pin2 != PIN_NC){
+    oe_pin2 = config.pins.oe_pin2;
+    PLATFORM_LOG_I(TAG, "Dual OE mode: Primary=%d, Secondary=%d (controlled via DMA buffer)", 
+             (int)config.pins.oe_pin, (int)config.pins.oe_pin2);
   }
   
   initialized = true;
   
-  ESP_LOGI(TAG, "HUB75 driver initialised:");
-  ESP_LOGI(TAG, "  Hardware backend: %s", hwInterface->getBackendName());
-  ESP_LOGI(TAG, "  Matrix: %dx%d pixels", config.matrix_width, config.matrix_height);
-  ESP_LOGI(TAG, "  Colour depth: %d-bit (%d planes)", config.colour_depth, config.colour_depth);
-  ESP_LOGI(TAG, "  Clock: %dMHz", config.clock_freq_hz / 1000000);
-  ESP_LOGI(TAG, "  Buffer size: %d samples", buffer_size);
-  ESP_LOGI(TAG, "  Buffer mode: %s", 
+  PLATFORM_LOG_I(TAG, "HUB75 driver initialised:");
+  PLATFORM_LOG_I(TAG, "  Hardware backend: %s", hwInterface->getBackendName());
+  PLATFORM_LOG_I(TAG, "  Matrix: %dx%d pixels", config.matrix_width, config.matrix_height);
+  PLATFORM_LOG_I(TAG, "  Colour depth: %d-bit (%d planes)", config.colour_depth, config.colour_depth);
+  PLATFORM_LOG_I(TAG, "  Clock: %dMHz", config.clock_freq_hz / 1000000);
+  PLATFORM_LOG_I(TAG, "  Buffer size: %d samples", buffer_size);
+  PLATFORM_LOG_I(TAG, "  Buffer mode: %s", 
            bufferManager->getMode() == BufferMode::DOUBLE_BUFFER ? "Double buffered" : "Single buffered");
   
   return true;
@@ -246,12 +245,12 @@ bool HUB75Driver::init(const HUB75Config& cfg){
 
 bool HUB75Driver::start(){
   if(!initialized){
-    ESP_LOGE(TAG, "Driver not initialised");
+    PLATFORM_LOG_E(TAG, "Driver not initialised");
     return false;
   }
   
   if(running){
-    ESP_LOGW(TAG, "Driver already running");
+    PLATFORM_LOG_W(TAG, "Driver already running");
     return true;
   }
   
@@ -261,12 +260,12 @@ bool HUB75Driver::start(){
   
   /** Start transmission using hardware interface */
   if(!hwInterface->setDirectBuffer(frontBuffer, buffer_size)){
-    ESP_LOGE(TAG, "Failed to set front buffer");
+    PLATFORM_LOG_E(TAG, "Failed to set front buffer");
     return false;
   }
   
   if(!hwInterface->start()){
-    ESP_LOGE(TAG, "Failed to start transmission");
+    PLATFORM_LOG_E(TAG, "Failed to start transmission");
     return false;
   }
   
@@ -275,8 +274,8 @@ bool HUB75Driver::start(){
   /** Synchronize secondary OE pin */
   synchronizeOEPins();
   
-  ESP_LOGI(TAG, "HUB75 transmission started%s", 
-           (oe_pin2 != GPIO_NUM_NC) ? " (dual display mode)" : "");
+  PLATFORM_LOG_I(TAG, "HUB75 transmission started%s", 
+           (oe_pin2 != PIN_NC) ? " (dual display mode)" : "");
   return true;
 }
 
@@ -284,8 +283,8 @@ void HUB75Driver::stop(){
   if(running && hwInterface){
     hwInterface->stop();
     running = false;
-    ESP_LOGI(TAG, "HUB75 transmission stopped%s", 
-             (oe_pin2 != GPIO_NUM_NC) ? " (dual display mode)" : "");
+    PLATFORM_LOG_I(TAG, "HUB75 transmission stopped%s", 
+             (oe_pin2 != PIN_NC) ? " (dual display mode)" : "");
   }
 }
 
@@ -344,7 +343,7 @@ void HUB75Driver::show(){
 bool HUB75Driver::swapBuffers(){
   /** Swap buffers in the buffer manager */
   if(!bufferManager->swapBuffers()){
-    ESP_LOGE(TAG, "Failed to swap buffers in buffer manager");
+    PLATFORM_LOG_E(TAG, "Failed to swap buffers in buffer manager");
     return false;
   }
   
@@ -354,7 +353,7 @@ bool HUB75Driver::swapBuffers(){
   
   /** Update hardware interface to use new front buffer */
   if(!hwInterface->swapBuffer(frontBuffer, buffer_size)){
-    ESP_LOGE(TAG, "Failed to swap buffer in hardware interface");
+    PLATFORM_LOG_E(TAG, "Failed to swap buffer in hardware interface");
     return false;
   }
   
@@ -668,12 +667,12 @@ FrameBuffer HUB75Driver::getFrameBuffer() const{
 
 bool HUB75Driver::setFrameBuffer(const FrameBuffer& buffer){
   if(!validateConfig(config) || !isValidBufferSize(buffer.width, buffer.height)){
-    ESP_LOGE(TAG, "Invalid buffer dimensions: %dx%d", buffer.width, buffer.height);
+    PLATFORM_LOG_E(TAG, "Invalid buffer dimensions: %dx%d", buffer.width, buffer.height);
     return false;
   }
   
   if(buffer.format != FrameBuffer::RGB888){
-    ESP_LOGE(TAG, "Unsupported buffer format");
+    PLATFORM_LOG_E(TAG, "Unsupported buffer format");
     return false;
   }
   
@@ -690,7 +689,7 @@ bool HUB75Driver::setFrameBuffer(const FrameBuffer& buffer){
 
 bool HUB75Driver::uploadFrameBuffer(const RGB* pixels, int width, int height){
   if(!pixels || !isValidBufferSize(width, height)){
-    ESP_LOGE(TAG, "Invalid buffer parameters");
+    PLATFORM_LOG_E(TAG, "Invalid buffer parameters");
     return false;
   }
   
@@ -707,7 +706,7 @@ bool HUB75Driver::uploadFrameBuffer(const RGB* pixels, int width, int height){
 
 void HUB75Driver::copyFrameBuffer(RGB* destination) const{
   if(!destination || !framebuffer){
-    ESP_LOGE(TAG, "Invalid destination buffer");
+    PLATFORM_LOG_E(TAG, "Invalid destination buffer");
     return;
   }
   
@@ -722,12 +721,12 @@ void HUB75Driver::copyFrameBuffer(RGB* destination) const{
 /** Configuration management */
 bool HUB75Driver::updateConfig(const HUB75Config& newConfig){
   if(!validateConfig(newConfig)){
-    ESP_LOGE(TAG, "Invalid configuration");
+    PLATFORM_LOG_E(TAG, "Invalid configuration");
     return false;
   }
   
   if(initialized){
-    ESP_LOGW(TAG, "Updating config on initialised driver - restart required");
+    PLATFORM_LOG_W(TAG, "Updating config on initialised driver - restart required");
   }
   
   applyConfig(newConfig);
@@ -756,40 +755,40 @@ void HUB75Driver::updateGammaTable(float gamma){
   /** Fast copy from compile-time optimised gamma tables - no pow() calculations */
   if(gamma >= 2.5f){
     memcpy(gamma_table, GAMMA_TABLE_26, sizeof(gamma_table));
-    ESP_LOGI(TAG, "Updated to optimised gamma table (γ=2.6)");
+    PLATFORM_LOG_I(TAG, "Updated to optimised gamma table (γ=2.6)");
   } else if(gamma >= 2.0f){
     memcpy(gamma_table, GAMMA_TABLE_22, sizeof(gamma_table));
-    ESP_LOGI(TAG, "Updated to optimised gamma table (γ=2.2)");  
+    PLATFORM_LOG_I(TAG, "Updated to optimised gamma table (γ=2.2)");  
   } else {
     memcpy(gamma_table, GAMMA_TABLE_18, sizeof(gamma_table));
-    ESP_LOGI(TAG, "Updated to optimised gamma table (γ=1.8)");
+    PLATFORM_LOG_I(TAG, "Updated to optimised gamma table (γ=1.8)");
   }
   
-  ESP_LOGI(TAG, "Fast gamma update - eliminated pow() runtime calculations");
+  PLATFORM_LOG_I(TAG, "Fast gamma update - eliminated pow() runtime calculations");
 }
 
 bool HUB75Driver::validateConfig(const HUB75Config& cfg) const{
   /** Validate matrix dimensions */
   if(cfg.matrix_width <= 0 || cfg.matrix_height <= 0){
-    ESP_LOGE(TAG, "Invalid matrix dimensions: %dx%d", cfg.matrix_width, cfg.matrix_height);
+    PLATFORM_LOG_E(TAG, "Invalid matrix dimensions: %dx%d", cfg.matrix_width, cfg.matrix_height);
     return false;
   }
   
   /** Validate colour depth */
   if(cfg.colour_depth < 1 || cfg.colour_depth > 8){
-    ESP_LOGE(TAG, "Invalid colour depth: %d (must be 1-8)", cfg.colour_depth);
+    PLATFORM_LOG_E(TAG, "Invalid colour depth: %d (must be 1-8)", cfg.colour_depth);
     return false;
   }
   
   /** Validate clock frequency */
   if(cfg.clock_freq_hz < 1000000 || cfg.clock_freq_hz > 20000000){
-    ESP_LOGE(TAG, "Invalid clock frequency: %d Hz", cfg.clock_freq_hz);
+    PLATFORM_LOG_E(TAG, "Invalid clock frequency: %d Hz", cfg.clock_freq_hz);
     return false;
   }
   
   /** Validate gamma value */
   if(cfg.enable_gamma_correction && (cfg.gamma_value < 0.1f || cfg.gamma_value > 5.0f)){
-    ESP_LOGE(TAG, "Invalid gamma value: %.2f (must be 0.1-5.0)", cfg.gamma_value);
+    PLATFORM_LOG_E(TAG, "Invalid gamma value: %.2f (must be 0.1-5.0)", cfg.gamma_value);
     return false;
   }
   
@@ -811,8 +810,8 @@ bool HUB75Driver::isValidBufferSize(int width, int height) const{
 
 void HUB75Driver::synchronizeOEPins(){
   /** Secondary OE pin is controlled via DMA buffer bit manipulation - no GPIO calls needed */
-  if(oe_pin2 != GPIO_NUM_NC){
-    ESP_LOGI(TAG, "Secondary OE pin %d synchronized via DMA buffer (bit %d)", 
+  if(oe_pin2 != PIN_NC){
+    PLATFORM_LOG_I(TAG, "Secondary OE pin %d synchronized via DMA buffer (bit %d)", 
              (int)oe_pin2, OE2_BIT);
   }
 }

@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <cstddef>          // For size_t
-#include "driver/gpio.h"   // For gpio_num_t
+#include "platform_hal.hpp" // Platform abstraction layer
 
 /** Forward declarations of abstract interfaces */
 class IParallelHardware;
@@ -89,21 +89,21 @@ struct HUB75Config {
   
   /** GPIO pin mappings for HUB75 protocol */
   struct PinMapping {
-    int r0_pin = 7;   // Upper half red
-    int g0_pin = 15;  // Upper half green  
-    int b0_pin = 16;  // Upper half blue
-    int r1_pin = 17;  // Lower half red
-    int g1_pin = 18;  // Lower half green
-    int b1_pin = 8;   // Lower half blue
-    int lat_pin = 36; // Latch signal
-    int oe_pin = 35;  // Output enable (primary)
-    int oe_pin2 = -1; // Output enable (secondary, -1 = disabled)
-    int a_pin = 41;   // Row address A
-    int b_pin = 40;   // Row address B
-    int c_pin = 39;   // Row address C
-    int d_pin = 38;   // Row address D
-    int e_pin = 42;   // Row address E (for 64-row panels)
-    int clock_pin = 37; // Clock signal
+    PinNumber r0_pin = 7;   // Upper half red
+    PinNumber g0_pin = 15;  // Upper half green  
+    PinNumber b0_pin = 16;  // Upper half blue
+    PinNumber r1_pin = 17;  // Lower half red
+    PinNumber g1_pin = 18;  // Lower half green
+    PinNumber b1_pin = 8;   // Lower half blue
+    PinNumber lat_pin = 36; // Latch signal
+    PinNumber oe_pin = 35;  // Output enable (primary)
+    PinNumber oe_pin2 = PIN_NC; // Output enable (secondary, PIN_NC = disabled)
+    PinNumber a_pin = 41;   // Row address A
+    PinNumber b_pin = 40;   // Row address B
+    PinNumber c_pin = 39;   // Row address C
+    PinNumber d_pin = 38;   // Row address D
+    PinNumber e_pin = 42;   // Row address E (for 64-row panels)
+    PinNumber clock_pin = 37; // Clock signal
   } pins;
   
   /** Advanced timing settings */
@@ -177,6 +177,10 @@ public:
   int getWidth() const { return config.dual_display_mode ? config.effective_width : config.matrix_width; }
   int getHeight() const { return config.matrix_height; }
   
+  /** BCM brightness control (0-255, scales display duration, not pixel values) */
+  void setBrightness(uint8_t brightness);
+  uint8_t getBrightness() const { return bcm_brightness; }
+  
   /** Gamma correction controls */
   void setGammaCorrection(bool enabled, float gamma = 2.2f);
   bool isGammaCorrectionEnabled() const { return config.enable_gamma_correction; }
@@ -202,7 +206,10 @@ private:
   uint16_t* backBuffer;
   
   /** Dual OE pin support */
-  gpio_num_t oe_pin2;
+  PinNumber oe_pin2;
+  
+  /** Platform HAL reference */
+  IPlatformHAL* platform;
   
   /** Configuration and state */
   HUB75Config config;
@@ -215,6 +222,9 @@ private:
   /** Buffer management */
   int buffer_size;
   int base_buffer_size;
+  
+  /** BCM brightness control (0-255, affects display duration) */
+  uint8_t bcm_brightness;
   
   /** Gamma correction tables - optimised for 5-bit colour depth */
   uint8_t gamma_table[32];

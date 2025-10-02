@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <cstddef>
-#include "driver/gpio.h"
+#include "platform_hal.hpp"
 
 /**
  * @brief Configuration structure for parallel hardware interface
@@ -15,10 +15,10 @@ struct ParallelHardwareConfig {
   bool invert_clock{false};            ///< Invert clock polarity
   bool continuous_mode{true};          ///< Enable continuous looping mode
   uint8_t data_width{14};              ///< Number of data pins to use
-  gpio_num_t clock_pin{GPIO_NUM_NC};   ///< External clock output pin
+  PinNumber clock_pin{PIN_NC};         ///< External clock output pin
   
   /** Pin mapping for data lines */
-  gpio_num_t* data_pins{nullptr};      ///< Array of GPIO pins for data lines
+  PinNumber* data_pins{nullptr};       ///< Array of GPIO pins for data lines
   size_t data_pin_count{0};            ///< Number of data pins
 };
 
@@ -39,7 +39,7 @@ public:
    * @param config Configuration structure
    * @return true if initialization successful, false otherwise
    */
-  virtual bool init(const gpio_num_t* data_pins, const ParallelHardwareConfig& config) = 0;
+  virtual bool init(const PinNumber* data_pins, const ParallelHardwareConfig& config) = 0;
   
   /**
    * @brief Set buffer for DMA transfer

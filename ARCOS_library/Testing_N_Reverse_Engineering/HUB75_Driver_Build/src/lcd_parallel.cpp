@@ -1,4 +1,5 @@
 #include "lcd_parallel.hpp"
+#include "driver/gpio.h"
 #include "esp_log.h"
 #include "esp_err.h"
 #include "esp_heap_caps.h"
@@ -28,10 +29,10 @@ LcdParallel::LcdParallel()
 LcdParallel::~LcdParallel() {
   stop();
   if (dma_descriptors) {
-    heap_caps_free(dma_descriptors);
+    heap_caps_free(reinterpret_cast<dma_descriptor_t*>(dma_descriptors));
   }
   if (dma_chan) {
-    gdma_del_channel(dma_chan);
+    gdma_del_channel(reinterpret_cast<gdma_channel_handle_t>(dma_chan));
   }
 }
 
@@ -39,7 +40,7 @@ LcdParallelConfig LcdParallel::getDefaultConfig(){
   return LcdParallelConfig{};  // Uses default member initializers
 }
 
-bool LcdParallel::init(const gpio_num_t* data_pins, const LcdParallelConfig& config){
+bool LcdParallel::init(const PinNumber* data_pins, const LcdParallelConfig& config){
   if(initialized){
     ESP_LOGW(TAG, "LCD parallel already initialized");
     return true;
@@ -112,10 +113,11 @@ bool LcdParallel::init(const gpio_num_t* data_pins, const LcdParallelConfig& con
   /** Connect GPIO pins to LCD data signals (only up to data_width) */
   ESP_LOGI(TAG, "Connecting %d GPIO pins to LCD data outputs", this->config.data_width);
   for(int i = 0; i < this->config.data_width && i < 16; i++){
-    if(data_pins[i] != GPIO_NUM_NC){
+    gpio_num_t pin = static_cast<gpio_num_t>(data_pins[i]);
+    if(pin != GPIO_NUM_NC){
       /** Configure GPIO */
       gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << data_pins[i]),
+        .pin_bit_mask = (1ULL << pin),
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -124,22 +126,23 @@ bool LcdParallel::init(const gpio_num_t* data_pins, const LcdParallelConfig& con
       gpio_config(&io_conf);
       
       /** Connect to LCD data output signal */
-      esp_rom_gpio_connect_out_signal(data_pins[i], LCD_DATA_OUT0_IDX + i, false, false);
+      esp_rom_gpio_connect_out_signal(pin, LCD_DATA_OUT0_IDX + i, false, false);
       
       /** Set maximum drive strength */
-      gpio_set_drive_capability(data_pins[i], GPIO_DRIVE_CAP_3);
+      gpio_set_drive_capability(pin, GPIO_DRIVE_CAP_3);
       
-      ESP_LOGD(TAG, "GPIO %d -> LCD_DATA_OUT%d", data_pins[i], i);
+      ESP_LOGD(TAG, "GPIO %d -> LCD_DATA_OUT%d", (int)pin, i);
     }
   }
   
   /** Configure external clock pin if specified */
-  if(this->config.clock_pin != GPIO_NUM_NC){
-    ESP_LOGI(TAG, "Configuring external clock output on GPIO %d", this->config.clock_pin);
+  gpio_num_t clock_pin_gpio = static_cast<gpio_num_t>(this->config.clock_pin);
+  if(clock_pin_gpio != GPIO_NUM_NC){
+    ESP_LOGI(TAG, "Configuring external clock output on GPIO %d", (int)clock_pin_gpio);
     
     /** Configure clock GPIO */
     gpio_config_t clock_conf = {
-      .pin_bit_mask = (1ULL << this->config.clock_pin),
+      .pin_bit_mask = (1ULL << clock_pin_gpio),
       .mode = GPIO_MODE_OUTPUT,
       .pull_up_en = GPIO_PULLUP_DISABLE,
       .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -148,12 +151,12 @@ bool LcdParallel::init(const gpio_num_t* data_pins, const LcdParallelConfig& con
     gpio_config(&clock_conf);
     
     /** Connect to LCD clock output signal */
-    esp_rom_gpio_connect_out_signal(this->config.clock_pin, LCD_PCLK_IDX, false, false);
+    esp_rom_gpio_connect_out_signal(clock_pin_gpio, LCD_PCLK_IDX, false, false);
     
     /** Set maximum drive strength for clean clock signal */
-    gpio_set_drive_capability(this->config.clock_pin, GPIO_DRIVE_CAP_3);
+    gpio_set_drive_capability(clock_pin_gpio, GPIO_DRIVE_CAP_3);
     
-    ESP_LOGI(TAG, "GPIO %d -> LCD_PCLK (External Clock Output)", this->config.clock_pin);
+    ESP_LOGI(TAG, "GPIO %d -> LCD_PCLK (External Clock Output)", (int)clock_pin_gpio);
   } else {
     ESP_LOGD(TAG, "No external clock pin configured - clock stays internal");
   }
@@ -168,14 +171,16 @@ bool LcdParallel::init(const gpio_num_t* data_pins, const LcdParallelConfig& con
     }
   };
   
-  esp_err_t ret = gdma_new_ahb_channel(&dma_config, &dma_chan);
+  gdma_channel_handle_t esp32_dma_chan = nullptr;
+  esp_err_t ret = gdma_new_ahb_channel(&dma_config, &esp32_dma_chan);
   if(ret != ESP_OK){
     ESP_LOGE(TAG, "Failed to allocate GDMA channel: %s", esp_err_to_name(ret));
     return false;
   }
+  dma_chan = reinterpret_cast<PlatformDmaChannel*>(esp32_dma_chan);
   
   /** Connect GDMA to LCD peripheral */
-  ret = gdma_connect(dma_chan, GDMA_MAKE_TRIGGER(GDMA_TRIG_PERIPH_LCD, 0));
+  ret = gdma_connect(esp32_dma_chan, GDMA_MAKE_TRIGGER(GDMA_TRIG_PERIPH_LCD, 0));
   if(ret != ESP_OK){
     ESP_LOGE(TAG, "Failed to connect GDMA to LCD: %s", esp_err_to_name(ret));
     return false;
@@ -186,7 +191,7 @@ bool LcdParallel::init(const gpio_num_t* data_pins, const LcdParallelConfig& con
     .max_data_burst_size = 16,
     .access_ext_mem = false
   };
-  gdma_config_transfer(dma_chan, &transfer_config);
+  gdma_config_transfer(esp32_dma_chan, &transfer_config);
   
   initialized = true;
   ESP_LOGI(TAG, "LCD parallel interface initialized successfully");
@@ -228,12 +233,13 @@ bool LcdParallel::setBuffer(uint16_t* buffer, size_t buffer_len){
            buffer_len, buffer_bytes, desc_count);
   
   /** Allocate DMA descriptors */
-  dma_descriptors = static_cast<dma_descriptor_t*>(
+  dma_descriptor_t* esp32_descriptors = static_cast<dma_descriptor_t*>(
     heap_caps_malloc(desc_count * sizeof(dma_descriptor_t), MALLOC_CAP_DMA));
-  if(!dma_descriptors){
+  if(!esp32_descriptors){
     ESP_LOGE(TAG, "Failed to allocate DMA descriptors");
     return false;
   }
+  dma_descriptors = reinterpret_cast<PlatformDmaDescriptor*>(esp32_descriptors);
   
   /** Setup DMA descriptor chain */
   uint8_t* buf_ptr = reinterpret_cast<uint8_t*>(buffer);
@@ -242,26 +248,26 @@ bool LcdParallel::setBuffer(uint16_t* buffer, size_t buffer_len){
   for(size_t i = 0; i < desc_count; i++){
     size_t chunk_size = (remaining > max_desc_size) ? max_desc_size : remaining;
     
-    dma_descriptors[i].dw0.owner = DMA_DESCRIPTOR_BUFFER_OWNER_DMA;
-    dma_descriptors[i].dw0.suc_eof = (i == desc_count - 1) ? 1 : 0;
-    dma_descriptors[i].dw0.length = chunk_size;
-    dma_descriptors[i].buffer = buf_ptr;
+    esp32_descriptors[i].dw0.owner = DMA_DESCRIPTOR_BUFFER_OWNER_DMA;
+    esp32_descriptors[i].dw0.suc_eof = (i == desc_count - 1) ? 1 : 0;
+    esp32_descriptors[i].dw0.length = chunk_size;
+    esp32_descriptors[i].buffer = buf_ptr;
     
     /** Create circular linked list for continuous operation if enabled */
     if(config.continuous_mode){
       if(i == desc_count - 1){
-        dma_descriptors[i].next = &dma_descriptors[0]; // Loop back
+        esp32_descriptors[i].next = &esp32_descriptors[0]; // Loop back
       } else {
-        dma_descriptors[i].next = &dma_descriptors[i + 1];
+        esp32_descriptors[i].next = &esp32_descriptors[i + 1];
       }
     } else {
-      dma_descriptors[i].next = (i == desc_count - 1) ? nullptr : &dma_descriptors[i + 1];
+      esp32_descriptors[i].next = (i == desc_count - 1) ? nullptr : &esp32_descriptors[i + 1];
     }
     
     buf_ptr += chunk_size;
     remaining -= chunk_size;
     
-    ESP_LOGD(TAG, "DMA desc[%d]: %d bytes at %p", i, chunk_size, dma_descriptors[i].buffer);
+    ESP_LOGD(TAG, "DMA desc[%d]: %d bytes at %p", i, chunk_size, esp32_descriptors[i].buffer);
   }
   
   ESP_LOGI(TAG, "Buffer set successfully");
@@ -298,6 +304,7 @@ bool LcdParallel::swapBuffer(uint16_t* new_buffer_ptr, size_t buffer_len){
   this->buffer = new_buffer_ptr;  // Update buffer pointer
   
   /* Update DMA descriptor chain to point to new buffer */
+  dma_descriptor_t* esp32_descriptors = reinterpret_cast<dma_descriptor_t*>(dma_descriptors);
   uint8_t* buf_ptr = reinterpret_cast<uint8_t*>(new_buffer_ptr);
   size_t buffer_bytes = buffer_len * sizeof(uint16_t);
   size_t remaining = buffer_bytes;
@@ -306,7 +313,7 @@ bool LcdParallel::swapBuffer(uint16_t* new_buffer_ptr, size_t buffer_len){
   for(size_t i = 0; i < desc_count; i++){
     size_t chunk_size = (remaining > max_desc_size) ? max_desc_size : remaining;
     
-    dma_descriptors[i].buffer = buf_ptr;    // Update buffer pointer in descriptor
+    esp32_descriptors[i].buffer = buf_ptr;    // Update buffer pointer in descriptor
     /* Keep other descriptor settings (owner, eof, length, next) unchanged */
     
     buf_ptr += chunk_size;
@@ -352,7 +359,9 @@ bool LcdParallel::start(){
   LCD_CAM.lcd_user.lcd_update = 1;
   
   /** Start GDMA with descriptor chain */
-  esp_err_t ret = gdma_start(dma_chan, reinterpret_cast<intptr_t>(&dma_descriptors[0]));
+  dma_descriptor_t* esp32_descriptors = reinterpret_cast<dma_descriptor_t*>(dma_descriptors);
+  gdma_channel_handle_t esp32_dma_chan = reinterpret_cast<gdma_channel_handle_t>(dma_chan);
+  esp_err_t ret = gdma_start(esp32_dma_chan, reinterpret_cast<intptr_t>(&esp32_descriptors[0]));
   if(ret != ESP_OK){
     ESP_LOGE(TAG, "Failed to start GDMA: %s", esp_err_to_name(ret));
     return false;
@@ -382,7 +391,8 @@ void LcdParallel::stop(){
   
   /** Stop GDMA */
   if(dma_chan){
-    gdma_stop(dma_chan);
+    gdma_channel_handle_t esp32_dma_chan = reinterpret_cast<gdma_channel_handle_t>(dma_chan);
+    gdma_stop(esp32_dma_chan);
   }
   
   running = false;
@@ -401,7 +411,7 @@ const ParallelHardwareConfig* LcdParallel::getConfig() const {
   return initialized ? &hw_config : nullptr;
 }
 
-bool LcdParallel::init(const gpio_num_t* data_pins, const ParallelHardwareConfig& config){
+bool LcdParallel::init(const PinNumber* data_pins, const ParallelHardwareConfig& config){
   /** Convert to LcdParallelConfig and call legacy init */
   LcdParallelConfig legacy_config;
   legacy_config.clock_freq_hz = config.clock_freq_hz;

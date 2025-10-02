@@ -2,10 +2,12 @@
 
 #include <cstdint>
 #include <cstddef>
-#include "driver/gpio.h"
-#include "hal/dma_types.h"
-#include "esp_private/gdma.h"
+#include "platform_hal.hpp"
 #include "parallel_hardware_interface.hpp"
+
+/** Forward declarations for platform-specific types (opaque pointers) */
+struct PlatformDmaChannel;
+struct PlatformDmaDescriptor;
 
 /**
  * @brief Configuration structure for LCD parallel interface
@@ -16,7 +18,7 @@ struct LcdParallelConfig{
   bool invert_clock{false};            ///< Invert clock polarity (default: false)
   bool continuous_mode{true};          ///< Enable continuous looping mode (default: true)
   uint8_t data_width{14};              ///< Number of data pins to use (default: 14, max: 16)
-  gpio_num_t clock_pin{GPIO_NUM_NC};   ///< External clock output pin (default: no external clock)
+  PinNumber clock_pin{PIN_NC};         ///< External clock output pin (default: no external clock)
 };
 
 /**
@@ -50,7 +52,7 @@ public:
    * @param config Configuration structure with timing and mode settings
    * @return true if initialization successful, false otherwise
    */
-  bool init(const gpio_num_t* data_pins, const LcdParallelConfig& config);
+  bool init(const PinNumber* data_pins, const LcdParallelConfig& config);
   
   /**
    * @brief Initialize LCD parallel interface (IParallelHardware interface)
@@ -58,7 +60,7 @@ public:
    * @param config Configuration structure with timing and mode settings
    * @return true if initialization successful, false otherwise
    */
-  bool init(const gpio_num_t* data_pins, const ParallelHardwareConfig& config) override;
+  bool init(const PinNumber* data_pins, const ParallelHardwareConfig& config) override;
 
   /**
    * @brief Set buffer for LCD parallel DMA transfer
@@ -135,9 +137,9 @@ public:
   const char* getBackendName() const override { return "LCD_CAM"; }
 
 private:
-  /** DMA and LCD peripheral state */
-  gdma_channel_handle_t dma_chan;
-  dma_descriptor_t* dma_descriptors;
+  /** DMA and LCD peripheral state (opaque pointers for platform abstraction) */
+  PlatformDmaChannel* dma_chan;
+  PlatformDmaDescriptor* dma_descriptors;
   size_t desc_count;
   bool initialized;
   bool running;
@@ -145,4 +147,7 @@ private:
   ParallelHardwareConfig hw_config;  // Config for interface compliance
   uint16_t* buffer;
   size_t buffer_len;
+  
+  /** Platform HAL reference */
+  IPlatformHAL* platform;
 };
