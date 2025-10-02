@@ -12,6 +12,8 @@
 #include "hal/gdma_ll.h"
 #include "esp_private/gdma.h"
 
+namespace arcos::abstraction{
+
 static const char* TAG = "LCD_PARALLEL";
 
 LcdParallel::LcdParallel() 
@@ -422,3 +424,5 @@ bool LcdParallel::init(const PinNumber* data_pins, const ParallelHardwareConfig&
   
   return init(data_pins, legacy_config);
 }
+
+} // namespace arcos::abstraction

@@ -1,7 +1,12 @@
 #pragma once
 
-#include "../../core/hal_parallel_interface.hpp"
-#include "../../core/platform_hal.hpp"
+#include "../../../../core/hal_protocal_parallel.hpp"
+#include "../../../../core/platform_hal.hpp"
+
+namespace arcos::abstraction{
+
+using parallel::IParallelHardware;
+using parallel::ParallelHardwareConfig;
 
 /** Forward declaration for platform-specific I2S handle */
 struct PlatformI2sHandle;
@@ -42,3 +47,5 @@ private:
   bool running;
   IPlatformHAL* platform;              ///< Platform HAL reference
 };
+
+} // namespace arcos::abstraction

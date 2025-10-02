@@ -1,5 +1,7 @@
 #include "i2s_parallel_driver.hpp"
 
+namespace arcos::abstraction{
+
 static const char* TAG = "I2S_PARALLEL";
 
 /**
@@ -186,3 +188,5 @@ const ParallelHardwareConfig* I2sParallelDriver::getConfig() const {
  * The platform HAL abstracts all hardware-specific details,
  * making this driver truly portable across architectures.
  */
+
+} // namespace arcos::abstraction

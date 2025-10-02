@@ -11,6 +11,8 @@
 #include <cstring>
 #include <cstdio>
 
+namespace arcos::abstraction{
+
 /** Singleton instance */
 static ESP32PlatformHAL* g_esp32_platform_hal = nullptr;
 
@@ -276,3 +278,5 @@ ESP32PlatformHAL* getESP32PlatformHAL(){
 IPlatformHAL* getPlatformHAL(){
   return getESP32PlatformHAL();
 }
+
+} // namespace arcos::abstraction

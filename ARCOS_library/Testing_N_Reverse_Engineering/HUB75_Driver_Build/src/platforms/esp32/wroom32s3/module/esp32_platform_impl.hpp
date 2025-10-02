@@ -1,7 +1,9 @@
 #pragma once
 
-#include "../../core/platform_hal.hpp"
 #include <stdarg.h>
+#include "../../../../core/platform_hal.hpp"
+
+namespace arcos::abstraction{
 
 /**
  * @file esp32_platform_impl.hpp
@@ -56,3 +58,5 @@ private:
  * @return Pointer to ESP32 platform HAL
  */
 ESP32PlatformHAL* getESP32PlatformHAL();
+
+} // namespace arcos::abstraction

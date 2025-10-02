@@ -1,6 +1,10 @@
-#include "../../core/hal_parallel_buffer.hpp"
-#include "../../core/platform_hal.hpp"
+#include "../../../../core/hal_protocal_parallel_buffer.hpp"
+#include "../../../../core/platform_hal.hpp"
 #include <cstring>
+
+namespace arcos::abstraction{
+
+using dma::BufferMode;
 
 static const char* TAG = "PARALLEL_BUFFER";
 
@@ -401,3 +405,5 @@ bool ParallelBuffer::setExternalBuffer(size_t buffer_index, uint16_t* external_b
   PLATFORM_LOG_I(TAG, "Set external buffer %d: %d samples (zero-copy mode)", buffer_index, size);
   return true;
 }
+
+} // namespace arcos::abstraction

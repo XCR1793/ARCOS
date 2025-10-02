@@ -2,8 +2,13 @@
 
 #include <cstdint>
 #include <cstddef>
-#include "../../core/platform_hal.hpp"
-#include "../../core/hal_parallel_interface.hpp"
+#include "../../../../core/platform_hal.hpp"
+#include "../../../../core/hal_protocal_parallel.hpp"
+
+namespace arcos::abstraction{
+
+using parallel::IParallelHardware;
+using parallel::ParallelHardwareConfig;
 
 /** Forward declarations for platform-specific types (opaque pointers) */
 struct PlatformDmaChannel;
@@ -151,3 +156,5 @@ private:
   /** Platform HAL reference */
   IPlatformHAL* platform;
 };
+
+} // namespace arcos::abstraction
