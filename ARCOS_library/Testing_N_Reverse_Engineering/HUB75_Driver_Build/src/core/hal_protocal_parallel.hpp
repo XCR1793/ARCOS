@@ -1,8 +1,19 @@
-#pragma once
+/*****************************************************************
+ * File:      hal_protocal_parallel.hpp
+ * Category:  abstraction/core
+ * 
+ * Purpose:    Parallel hardware protocol abstraction interface
+ *****************************************************************/
+
+#ifndef ARCOS_ABSTRACTION_CORE_HAL_PROTOCAL_PARALLEL_HPP_
+#define ARCOS_ABSTRACTION_CORE_HAL_PROTOCAL_PARALLEL_HPP_
 
 #include <cstdint>
 #include <cstddef>
-#include "platform_hal.hpp"  // In same core/ folder
+#include "platform_hal.hpp"
+
+namespace arcos::abstraction{
+  namespace parallel{
 
 /**
  * @brief Configuration structure for parallel hardware interface
@@ -106,3 +117,8 @@ public:
    */
   virtual const char* getBackendName() const = 0;
 };
+
+  } // namespace parallel
+} // namespace arcos::abstraction
+
+#endif // ARCOS_ABSTRACTION_CORE_HAL_PROTOCAL_PARALLEL_HPP_

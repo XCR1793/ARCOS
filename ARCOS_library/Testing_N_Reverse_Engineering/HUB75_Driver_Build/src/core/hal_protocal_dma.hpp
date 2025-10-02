@@ -1,7 +1,18 @@
-#pragma once
+/*****************************************************************
+ * File:      hal_protocal_dma.hpp
+ * Category:  abstraction/core
+ * 
+ * Purpose:    DMA buffer management abstraction interface
+ *****************************************************************/
+
+#ifndef ARCOS_ABSTRACTION_CORE_HAL_PROTOCAL_DMA_HPP_
+#define ARCOS_ABSTRACTION_CORE_HAL_PROTOCAL_DMA_HPP_
 
 #include <cstdint>
 #include <cstddef>
+
+namespace arcos::abstraction{
+  namespace dma{
 
 /**
  * @brief Buffer mode enumeration
@@ -131,3 +142,8 @@ public:
    */
   virtual bool setExternalBuffer(size_t buffer_index, uint16_t* external_buffer, size_t size) = 0;
 };
+
+  } // namespace dma
+} // namespace arcos::abstraction
+
+#endif // ARCOS_ABSTRACTION_CORE_HAL_PROTOCAL_DMA_HPP_

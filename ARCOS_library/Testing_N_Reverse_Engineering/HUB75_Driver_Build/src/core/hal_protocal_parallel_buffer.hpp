@@ -1,8 +1,22 @@
-#pragma once
+/*****************************************************************
+ * File:      hal_protocal_parallel_buffer.hpp
+ * Category:  abstraction/core
+ * 
+ * Purpose:    Parallel buffer management implementation
+ *****************************************************************/
+
+#ifndef ARCOS_ABSTRACTION_CORE_HAL_PROTOCAL_PARALLEL_BUFFER_HPP_
+#define ARCOS_ABSTRACTION_CORE_HAL_PROTOCAL_PARALLEL_BUFFER_HPP_
 
 #include <cstdint>
 #include <cstddef>
-#include "hal_dma_buffer.hpp"  // Renamed from dma_buffer_manager.hpp
+#include "hal_protocal_dma.hpp"
+
+namespace arcos::abstraction{
+
+using dma::IDmaBufferManager;
+using dma::DmaBufferConfig;
+using dma::BufferMode;
 
 /**
  * @brief Parallel Buffer Management Class
@@ -160,3 +174,7 @@ private:
   uint16_t* buffer;        ///< Pointer to allocated DMA buffer (legacy)
   bool legacy_owns_buffer; ///< True if we own the buffer memory (legacy)
 };
+
+} // namespace arcos::abstraction
+
+#endif // ARCOS_ABSTRACTION_CORE_HAL_PROTOCAL_PARALLEL_BUFFER_HPP_
