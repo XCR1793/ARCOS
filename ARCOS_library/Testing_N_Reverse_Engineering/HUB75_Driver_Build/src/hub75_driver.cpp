@@ -41,6 +41,8 @@ HUB75Driver::HUB75Driver()
   , framebuffer(nullptr)
   , buffer_size(0)
   , base_buffer_size(0)
+  , bcm_brightness(255)
+  , last_bcm_brightness(255)
 {
   // Initialise gamma table with compile-time values for optimal cache performance
   memcpy(gamma_table, GAMMA_TABLE_22, sizeof(gamma_table));
@@ -122,18 +124,24 @@ bool HUB75Driver::init(const HUB75Config& cfg, IParallelHardware* hardware, IDma
     config.panel_count = 2;
   }
   
-  // Buffer size calculation for BCM timing:
+  // Buffer size calculation for BCM timing with variable brightness:
   // PARALLEL_OE mode: BCM timing happens per-panel (after each 64-pixel latch)
   // SERIES_CHAIN/SINGLE: BCM timing happens once at end
-  // BCM timing varies: 1,2,4,8,16 samples for planes 0-4 = 31 total
+  // BCM timing varies: 1,2,4,8,16 samples for planes 0-4 = 31 base cycles
+  // For brightness control: allocate 64x base cycles, fill only needed amount
+  // Base BCM cycles: 31 per bit plane set
+  // Max BCM cycles (64x brightness): 31 * 64 = 1984 per bit plane set
+  // This gives 64 brightness levels (0-63) utilizing the 64 pixel clock cycles
   // Delay samples: 3 per plane × 5 planes = 15
+  int base_bcm_cycles = 31;  // Base BCM timing (1+2+4+8+16)
+  int max_brightness_scale = 64;  // Maximum brightness scale factor (64 levels, matching pixels per row)
   int total_bcm_samples;
   if(config.expansion_mode == HUB75Config::ExpansionMode::PARALLEL_OE){
-    // BCM per panel: 31 samples × panel_count
-    total_bcm_samples = 31 * config.panel_count;
+    // BCM per panel: allocate for max brightness
+    total_bcm_samples = base_bcm_cycles * max_brightness_scale * config.panel_count;
   } else {
-    // BCM once at end: 31 samples total
-    total_bcm_samples = 31;
+    // BCM once at end: allocate for max brightness
+    total_bcm_samples = base_bcm_cycles * max_brightness_scale;
   }
   int total_delay_samples = config.colour_depth * 3;  // 3 delay bits per plane
   buffer_size = hub75_rows * (config.colour_depth * pixels_per_row + total_bcm_samples + total_delay_samples);
@@ -288,6 +296,10 @@ void HUB75Driver::stop(){
   }
 }
 
+void HUB75Driver::setBrightness(uint8_t brightness){
+  bcm_brightness = brightness;
+}
+
 void HUB75Driver::setPixel(int x, int y, const RGB& colour){
   if(!isValidCoordinate(x, y)){
     return;
@@ -335,9 +347,14 @@ void HUB75Driver::show(){
     return;
   }
   
-  /** Convert framebuffer to HUB75 format and swap buffers */
+  /** Only regenerate buffer if brightness changed or on first call */
+  /** Note: We always regenerate for pixel changes, but this helps reduce
+   *  unnecessary regeneration when only animating brightness */
   convertFramebufferToHUB75();
   swapBuffers();
+  
+  /** Track brightness for next frame */
+  last_bcm_brightness = bcm_brightness;
 }
 
 bool HUB75Driver::swapBuffers(){
@@ -572,27 +589,46 @@ void HUB75Driver::convertFramebufferToHUB75(){
           
           if(is_latch_cycle){
             // Just latched this panel - now add BCM timing
-            int bcm_length = 1 << plane;
-            uint16_t bcm_sample = 0;
+            // Base BCM length for this plane
+            int base_bcm_length = 1 << plane;
             
-            // Set address lines (same row)
-            if(address_row & (1 << 0)) bcm_sample |= (1 << A_BIT);
-            if(address_row & (1 << 1)) bcm_sample |= (1 << B_BIT);
-            if(address_row & (1 << 2)) bcm_sample |= (1 << C_BIT);
-            if(address_row & (1 << 3)) bcm_sample |= (1 << D_BIT);
+            // Calculate how many cycles to fill based on brightness
+            // bcm_brightness ranges 0-255, map to 0-63 scale (using 64 pixel cycles)
+            // Total allocated cycles: base_bcm_length * 64
+            // Active cycles: base_bcm_length * (bcm_brightness >> 2)
+            int max_bcm_cycles = base_bcm_length * 64;
+            int brightness_scale = bcm_brightness >> 2;  // Map 0-255 to 0-63
+            int active_bcm_cycles = base_bcm_length * brightness_scale;
+            int inactive_bcm_cycles = max_bcm_cycles - active_bcm_cycles;
             
-            // Enable OE for THIS panel only
+            // Sample with OE enabled for THIS panel only
+            uint16_t bcm_sample_on = 0;
+            if(address_row & (1 << 0)) bcm_sample_on |= (1 << A_BIT);
+            if(address_row & (1 << 1)) bcm_sample_on |= (1 << B_BIT);
+            if(address_row & (1 << 2)) bcm_sample_on |= (1 << C_BIT);
+            if(address_row & (1 << 3)) bcm_sample_on |= (1 << D_BIT);
+            
             if(panel_index == 0){
               // Panel 0: OE LOW (enabled), OE2 HIGH (disabled)
-              bcm_sample |= (1 << OE2_BIT);
+              bcm_sample_on |= (1 << OE2_BIT);
             } else if(panel_index == 1){
               // Panel 1: OE HIGH (disabled), OE2 LOW (enabled)
-              bcm_sample |= (1 << OE_BIT);
+              bcm_sample_on |= (1 << OE_BIT);
             }
             
-            // Add bcm_length samples with OE enabled for this panel
-            for(int bcm_cycle = 0; bcm_cycle < bcm_length; bcm_cycle++){
-              backBuffer[buffer_index++] = bcm_sample;
+            // Sample with OE disabled (both OE and OE2 HIGH)
+            uint16_t bcm_sample_off = bcm_sample_on | (1 << OE_BIT) | (1 << OE2_BIT);
+            // But keep address lines from bcm_sample_on
+            bcm_sample_off = (bcm_sample_on & ~((1 << OE_BIT) | (1 << OE2_BIT))) | (1 << OE_BIT) | (1 << OE2_BIT);
+            
+            // Fill active cycles with OE enabled
+            for(int bcm_cycle = 0; bcm_cycle < active_bcm_cycles; bcm_cycle++){
+              backBuffer[buffer_index++] = bcm_sample_on;
+            }
+            
+            // Fill remaining cycles with OE disabled
+            for(int bcm_cycle = 0; bcm_cycle < inactive_bcm_cycles; bcm_cycle++){
+              backBuffer[buffer_index++] = bcm_sample_off;
             }
           }
         }
@@ -600,22 +636,37 @@ void HUB75Driver::convertFramebufferToHUB75(){
       
       /** BCM Timing for SERIES_CHAIN and SINGLE modes (once at end)
        *  For these modes, all pixels are latched together at the end
+       *  Fill-up strategy: allocate max cycles, fill only needed amount with OE
        */
       if(config.expansion_mode != HUB75Config::ExpansionMode::PARALLEL_OE){
-        int bcm_length = 1 << plane;
-        uint16_t bcm_sample = 0;
+        int base_bcm_length = 1 << plane;
         
-        // Set address lines (same row)
-        if(address_row & (1 << 0)) bcm_sample |= (1 << A_BIT);
-        if(address_row & (1 << 1)) bcm_sample |= (1 << B_BIT);
-        if(address_row & (1 << 2)) bcm_sample |= (1 << C_BIT);
-        if(address_row & (1 << 3)) bcm_sample |= (1 << D_BIT);
+        // Calculate active vs inactive cycles based on brightness
+        // Map 0-255 brightness to 0-63 scale (64 levels matching pixel count)
+        int max_bcm_cycles = base_bcm_length * 64;
+        int brightness_scale = bcm_brightness >> 2;  // Map 0-255 to 0-63
+        int active_bcm_cycles = base_bcm_length * brightness_scale;
+        int inactive_bcm_cycles = max_bcm_cycles - active_bcm_cycles;
         
+        // Sample with OE enabled (LOW)
+        uint16_t bcm_sample_on = 0;
+        if(address_row & (1 << 0)) bcm_sample_on |= (1 << A_BIT);
+        if(address_row & (1 << 1)) bcm_sample_on |= (1 << B_BIT);
+        if(address_row & (1 << 2)) bcm_sample_on |= (1 << C_BIT);
+        if(address_row & (1 << 3)) bcm_sample_on |= (1 << D_BIT);
         // OE enabled (LOW) - leave bit at 0
         
-        // Add bcm_length samples with OE enabled
-        for(int bcm_cycle = 0; bcm_cycle < bcm_length; bcm_cycle++){
-          backBuffer[buffer_index++] = bcm_sample;
+        // Sample with OE disabled (HIGH)
+        uint16_t bcm_sample_off = bcm_sample_on | (1 << OE_BIT);
+        
+        // Fill active cycles with OE enabled
+        for(int bcm_cycle = 0; bcm_cycle < active_bcm_cycles; bcm_cycle++){
+          backBuffer[buffer_index++] = bcm_sample_on;
+        }
+        
+        // Fill remaining cycles with OE disabled
+        for(int bcm_cycle = 0; bcm_cycle < inactive_bcm_cycles; bcm_cycle++){
+          backBuffer[buffer_index++] = bcm_sample_off;
         }
       }
       

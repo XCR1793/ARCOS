@@ -225,6 +225,7 @@ private:
   
   /** BCM brightness control (0-255, affects display duration) */
   uint8_t bcm_brightness;
+  uint8_t last_bcm_brightness;  // Track previous brightness to detect changes
   
   /** Gamma correction tables - optimised for 5-bit colour depth */
   uint8_t gamma_table[32];
