@@ -1,34 +1,117 @@
-# Coding Style Guide
+# ARCOS Coding Style Guide
 
-This document outlines the coding conventions and formatting rules used in the HUB75 Driver project.
+## Overview
 
----
+This document defines the coding style for the ARCOS hardware abstraction framework. Consistency in style improves readability and maintainability across the codebase.
 
-## Table of Contents
-1. [General Principles](#general-principles)
-2. [Naming Conventions](#naming-conventions)
-3. [Formatting Rules](#formatting-rules)
-4. [File Organization](#file-organization)
-5. [Comments and Documentation](#comments-and-documentation)
-6. [Best Practices](#best-practices)
+## Indentation
 
----
+- **Use 2 spaces** for indentation (no tabs)
+- Indent continuation lines by 2 spaces
 
-## General Principles
+```cpp
+if(condition){
+  doSomething();
+  doSomethingElse();
+}
+```
 
-- **Consistency**: Follow existing patterns in the codebase
-- **Readability**: Code should be self-documenting where possible
-- **Simplicity**: Prefer clear, straightforward solutions
-- **Performance**: Optimize critical paths (BCM conversion, DMA operations)
+## Braces
 
----
+- **Tight brace style**: No space before opening brace `{`
+- Opening brace on same line as statement
+- Closing brace on its own line
+
+```cpp
+// Correct
+if(condition){
+  doSomething();
+}
+
+// Incorrect
+if(condition) {
+  doSomething();
+}
+```
+
+### Functions
+
+```cpp
+void myFunction(){
+  // body
+}
+
+class MyClass{
+public:
+  void method(){
+    // body
+  }
+};
+```
+
+### Control Structures
+
+```cpp
+if(condition){
+  // body
+}else if(other_condition){
+  // body
+}else{
+  // body
+}
+
+for(int i = 0; i < count; i++){
+  // body
+}
+
+while(running){
+  // body
+}
+
+switch(value){
+  case 1:
+    break;
+  case 2:
+    break;
+  default:
+    break;
+}
+```
 
 ## Naming Conventions
 
-### Classes and Structs
+### Variables
+
+- **snake_case** for local variables and member variables
+- **ALL_CAPS** for constants and macros
 
 ```cpp
-// PascalCase for class names
+int buffer_size = 0;
+uint16_t* front_buffer = nullptr;
+bool is_initialized = false;
+
+constexpr int MAX_PANELS = 4;
+constexpr int R0_BIT = 0;
+```
+
+### Functions and Methods
+
+- **camelCase** for functions and methods
+- Start with lowercase letter
+- Descriptive names
+
+```cpp
+void initializeDriver();
+bool setPixel(int x, int y, const RGB& color);
+uint16_t* getWritableBuffer();
+```
+
+### Classes and Structs
+
+- **PascalCase** for class and struct names
+- Start with uppercase letter
+
+```cpp
 class HUB75Driver{
   // ...
 };
@@ -37,564 +120,365 @@ struct HUB75Config{
   // ...
 };
 
-struct PanelInversion{
-  // ...
+struct RGB{
+  uint8_t r, g, b;
 };
 ```
 
-### Variables
+### Interfaces
+
+- Prefix with `I` for interface classes
 
 ```cpp
-// snake_case for variables
-int panel_width = 64;
-int panel_height = 32;
-bool dual_display_mode = false;
-
-// Member variables (no special prefix)
-class HUB75Driver{
-  int width;
-  int height;
-  uint8_t bcm_brightness;
-  RGB* framebuffer;
+class IHUB75Protocol{
+public:
+  virtual bool init() = 0;
+  virtual ~IHUB75Protocol() = default;
 };
 ```
 
-### Functions and Methods
+### Namespaces
+
+- **snake_case** for nested namespaces
+- Use `arcos::abstraction::drivers` hierarchy
 
 ```cpp
-// camelCase for functions and methods
-void init(HUB75Config config);
-void setPixel(int x, int y, RGB color);
-RGB getPixel(int x, int y);
-void fillScreen(RGB color);
-
-// Boolean functions can use 'is' prefix
-bool isInitialized();
-bool isRunning();
-```
-
-### Constants and Macros
-
-```cpp
-// UPPER_CASE for constants and macros
-#define MAX_BRIGHTNESS 255
-#define BCM_BITS 5
-
-const int DEFAULT_BRIGHTNESS = 128;
-const float GAMMA_VALUE = 2.2f;
-```
-
-### Enumerations
-
-```cpp
-// PascalCase for enum names, UPPER_CASE for values
-enum ExpansionMode{
-  SINGLE,
-  PARALLEL_OE,
-  SERIES_CHAIN
-};
-```
-
----
-
-## Formatting Rules
-
-### Braces and Spacing
-
-**Tighter style - no space before opening brace:**
-
-```cpp
-// Correct - tighter style
-void function(){
-  if(condition){
-    doSomething();
-  }else{
-    doSomethingElse();
-  }
+namespace arcos::abstraction::drivers{
+  // Driver implementations
 }
 
-// Incorrect - too spaced out
-void function() {
-  if (condition) {
-    doSomething();
-  } else {
-    doSomethingElse();
-  }
+namespace arcos::abstraction::parallel{
+  // Parallel protocol abstractions
 }
 ```
 
-### Control Structures
+## Spacing
+
+### Operators
+
+- Space around binary operators
+- No space after unary operators
 
 ```cpp
-// If-else statements
-if(x > 0){
-  // do something
-}else if(x < 0){
-  // do something else
-}else{
-  // default case
+int result = a + b;
+int value = -x;
+bool flag = !condition;
+int index = i++;
+```
+
+### Parentheses
+
+- No space after function name
+- No space inside parentheses
+- Space after control structure keywords
+
+```cpp
+// Functions
+myFunction(arg1, arg2);
+int value = calculate(x, y);
+
+// Control structures
+if(condition){
+  // body
 }
 
-// For loops
 for(int i = 0; i < count; i++){
-  // loop body
-}
-
-// While loops
-while(condition){
-  // loop body
-}
-
-// Switch statements
-switch(value){
-  case OPTION_A:
-    handleA();
-    break;
-  case OPTION_B:
-    handleB();
-    break;
-  default:
-    handleDefault();
-    break;
+  // body
 }
 ```
 
-### Function Declarations
+### Pointer and Reference Declarations
+
+- Attach `*` and `&` to the type, not the variable
 
 ```cpp
-// Short functions on one line if simple
-void clear(){ fillScreen(RGB(0, 0, 0)); }
-
-// Multi-line for complex functions
-void setPixel(int x, int y, RGB color){
-  if(x < 0 || x >= width || y < 0 || y >= height){
-    return;
-  }
-  
-  int panel_index = (dual_display_mode && x >= panel_width) ? 1 : 0;
-  int local_x = dual_display_mode ? (x % panel_width) : x;
-  
-  framebuffer[panel_index][y * panel_width + local_x] = color;
-}
-
-// Function parameters - no space after opening parenthesis
-void drawRect(int x, int y, int w, int h, RGB color){
-  // implementation
-}
+uint16_t* buffer;
+const RGB& color;
+IParallelHardware* hardware;
 ```
 
-### Class Definitions
-
-```cpp
-class HUB75Driver{
-public:
-  // Constructor
-  HUB75Driver();
-  
-  // Public methods
-  void init(HUB75Config config);
-  void start();
-  void stop();
-  
-  // Getters/setters
-  void setBrightness(uint8_t brightness);
-  uint8_t getBrightness() const;
-  
-private:
-  // Private members
-  int width;
-  int height;
-  RGB* framebuffer;
-  
-  // Private methods
-  void convertToBCM();
-  void updateDMA();
-};
-```
-
-### Spacing and Indentation
-
-```cpp
-// Use 2 spaces for indentation (not tabs)
-void example(){
-  if(condition){
-    int value = calculate();
-    process(value);
-  }
-}
-
-// No space after function name
-setPixel(x, y, color);
-
-// Space after keywords
-if(condition){ }
-while(running){ }
-for(int i = 0; i < n; i++){ }
-
-// Space around operators
-int result = a + b * c;
-bool flag = (x > 5) && (y < 10);
-
-// No space in array/pointer access
-buffer[index] = value;
-ptr->member = data;
-```
-
-### Line Length
-
-- **Preferred**: Keep lines under 100 characters
-- **Maximum**: 120 characters
-- Break long lines logically:
-
-```cpp
-// Break at logical points
-RGB color = interpolate(
-  start_color,
-  end_color,
-  progress
-);
-
-// Or align parameters
-display.drawComplexShape(x, y, width, height,
-                        color, border_width,
-                        fill_mode, alpha);
-```
-
----
-
-## File Organization
-
-### Header Files (.hpp)
-
-```cpp
-#pragma once
-
-// System includes first
-#include <stdint.h>
-#include <stdbool.h>
-
-// Framework includes
-#include "esp_lcd_panel_io.h"
-#include "esp_heap_caps.h"
-
-// Project includes
-#include "parallel_hardware_interface.hpp"
-#include "dma_buffer_manager.hpp"
-
-// Forward declarations if needed
-class BufferManager;
-
-// Class definition
-class HUB75Driver{
-public:
-  // Public interface
-  
-private:
-  // Private members
-};
-```
-
-### Source Files (.cpp)
-
-```cpp
-// Include own header first
-#include "hub75_driver.hpp"
-
-// System includes
-#include <string.h>
-#include <math.h>
-
-// Framework includes
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-
-// Project includes
-#include "lcd_parallel.hpp"
-
-// Implementation
-HUB75Driver::HUB75Driver(){
-  // constructor
-}
-
-void HUB75Driver::init(HUB75Config config){
-  // method implementation
-}
-```
-
----
-
-## Comments and Documentation
+## Comments
 
 ### File Headers
 
+All files must include a standardized header with the following format:
+
 ```cpp
-/**
- * @file hub75_driver.cpp
- * @brief HUB75 LED matrix driver with BCM brightness control
+/*****************************************************************
+ * File:      driver_hub75.hpp
+ * Category:  abstraction/drivers/components/HUB75
+ * Author:    XCR1793 (Feather Forge)
  * 
- * Implements a high-performance driver for HUB75 LED panels using
- * ESP32-S3's LCD_CAM peripheral with DMA acceleration.
- */
+ * Purpose:
+ *    HUB75 LED matrix display driver abstraction with protocol
+ *    layer separation for modular hardware backend support.
+ *****************************************************************/
 ```
 
-### Function Documentation
+**Required Fields:**
+- `File:` - The filename with extension
+- `Category:` - The category path (e.g., abstraction, abstraction/drivers)
+- `Author:` - Author name and organization
+- `Purpose:` - Brief description of the file's functionality (can be multi-line)
+
+**Example for HAL file:**
+```cpp
+/*****************************************************************
+ * File:      hal_gpio_digital.hpp
+ * Category:  abstraction
+ * Author:    XCR1793 (Feather Forge)
+ * 
+ * Purpose:
+ *    Provides a template for GPIO HAL in both single and parallel
+ *    operations of digital pins. Compile time HAL abstraction for
+ *    a single port with zero runtime overhead.
+ *****************************************************************/
+```
+
+### Documentation Comments
+
+- Use `/** ... */` for documentation
+- Document public APIs, parameters, and return values
 
 ```cpp
-/**
- * Set a single pixel color
- * 
- * @param x X coordinate (0 to width-1)
- * @param y Y coordinate (0 to height-1)
- * @param color RGB color value
+/** Initialize the driver with injected protocol implementation
+ * @param config Display configuration 
+ * @param protocol Pointer to IHUB75Protocol implementation (REQUIRED)
+ * @return true if initialization successful
  */
-void setPixel(int x, int y, RGB color){
-  // implementation
-}
+bool init(const HUB75Config& config, IHUB75Protocol* protocol);
 ```
 
 ### Inline Comments
 
-```cpp
-// Single-line comments for brief explanations
-int brightness_scale = bcm_brightness >> 2;  // Map 0-255 to 0-63
-
-// Multi-line comments for complex logic
-// Calculate active BCM cycles based on brightness
-// The fill-up strategy allocates max buffer space and fills
-// only the needed portion with OE-enabled cycles
-int active_cycles = base_bcm_length * brightness_scale;
-int inactive_cycles = max_cycles - active_cycles;
-```
-
-### TODO Comments
+- Use `//` for single-line comments
+- Use `/** ... */` for multi-line explanations
 
 ```cpp
-// TODO: Implement vertical flip for panel inversion
-// FIXME: Handle edge case when brightness is 0
-// NOTE: This assumes 64 pixels per row
-// OPTIMIZE: Consider SIMD for gamma correction
+// Simple inline comment
+int value = 42;
+
+/** Complex multi-line explanation
+ *  Additional context about the implementation
+ *  More details here
+ */
 ```
 
----
+## Structure
+
+### Header Guards
+
+- Use `#ifndef` / `#define` / `#endif`
+- Format: `ARCOS_CATEGORY_FILE_HPP_`
+
+```cpp
+#ifndef ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_
+#define ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_
+
+// content
+
+#endif // ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_
+```
+
+### Include Order
+
+1. Corresponding header (for .cpp files)
+2. C system headers
+3. C++ standard library headers
+4. Platform/framework headers
+5. Project headers (relative paths)
+
+```cpp
+#include "driver_hub75.hpp"
+
+#include <stdint.h>
+#include <cstring>
+#include <cmath>
+
+#include "freertos/FreeRTOS.h"
+#include "esp_log.h"
+
+#include "../../../core/platform_hal.hpp"
+```
+
+### Class Organization
+
+```cpp
+class MyClass{
+public:
+  // Public types and constants
+  enum Mode { MODE_A, MODE_B };
+  
+  // Constructors and destructor
+  MyClass();
+  ~MyClass();
+  
+  // Public methods
+  bool init();
+  void process();
+  
+private:
+  // Private types
+  struct InternalData{
+    int value;
+  };
+  
+  // Private member variables
+  int state_;
+  bool initialized_;
+  
+  // Private methods
+  void internalProcess();
+};
+```
 
 ## Best Practices
 
 ### Memory Management
 
-```cpp
-// Prefer RAII and smart pointers when possible
-class Resource{
-public:
-  Resource(){
-    data = (uint8_t*)heap_caps_malloc(SIZE, MALLOC_CAP_DMA);
-  }
-  
-  ~Resource(){
-    if(data){
-      free(data);
-      data = nullptr;
-    }
-  }
-  
-private:
-  uint8_t* data;
-};
+- Use RAII principles
+- Clear ownership semantics
+- Document who owns pointers
 
-// Check allocations
-void* buffer = heap_caps_malloc(size, MALLOC_CAP_DMA);
-if(!buffer){
-  ESP_LOGE(TAG, "Failed to allocate buffer");
-  return false;
+```cpp
+/** NOTE: Driver does NOT own protocol
+ *  Application is responsible for lifecycle management */
+IHUB75Protocol* protocol;
+```
+
+### Initialization
+
+- Initialize members in constructor initializer lists
+- Use nullptr for pointers
+- Zero-initialize POD types
+
+```cpp
+HUB75Driver::HUB75Driver()
+  : protocol(nullptr)
+  , initialized(false)
+  , buffer_size(0)
+{
+  // Constructor body
 }
 ```
 
 ### Error Handling
 
-```cpp
-// Return bool for success/failure
-bool init(HUB75Config config){
-  if(!validateConfig(config)){
-    ESP_LOGE(TAG, "Invalid configuration");
-    return false;
-  }
-  
-  if(!allocateBuffers()){
-    ESP_LOGE(TAG, "Failed to allocate buffers");
-    return false;
-  }
-  
-  return true;
-}
+- Return bool for success/failure
+- Log errors with descriptive messages
+- Validate inputs
 
-// Use assertions for internal checks
-void setPixel(int x, int y, RGB color){
-  assert(x >= 0 && x < width);
-  assert(y >= 0 && y < height);
-  // implementation
+```cpp
+bool init(const HUB75Config& config, IHUB75Protocol* protocol){
+  if(!protocol){
+    PLATFORM_LOG_E(TAG, "Protocol must be provided (cannot be null)");
+    return false;
+  }
+  
+  if(!validateConfig(config)){
+    PLATFORM_LOG_E(TAG, "Invalid configuration");
+    return false;
+  }
+  
+  // ... initialization
+  return true;
 }
 ```
 
 ### Const Correctness
 
+- Use `const` for parameters that won't be modified
+- Use `const` for methods that don't modify state
+- Use `const` for member variables that never change
+
 ```cpp
-// Use const for parameters that won't be modified
-void drawImage(const uint8_t* image_data, int width, int height);
-
-// Const member functions
-int getWidth() const{ return width; }
-int getHeight() const{ return height; }
-
-// Const references for large objects
-void processConfig(const HUB75Config& config);
+bool setPixel(int x, int y, const RGB& color);
+RGB getPixel(int x, int y) const;
+const HUB75Config& getConfig() const { return config; }
 ```
 
-### Type Safety
+## Platform Logging
+
+Use platform-agnostic logging macros:
 
 ```cpp
-// Use explicit types
-uint8_t brightness = 255;  // Not just 'int'
-size_t buffer_size = 1024;
-bool is_running = false;
+PLATFORM_LOG_E(TAG, "Error: %s", message);    // Error
+PLATFORM_LOG_W(TAG, "Warning: %d", value);    // Warning
+PLATFORM_LOG_I(TAG, "Info: initialized");     // Info
+PLATFORM_LOG_D(TAG, "Debug: %04X", data);     // Debug
+```
 
-// Avoid magic numbers
-const int ROWS_PER_PANEL = 16;
-const int BCM_LEVELS = 5;
+## Example Complete File
 
-// Use enums for options
-enum ColorMode{
-  RGB565,
-  RGB888,
-  GRAYSCALE
+```cpp
+/*****************************************************************
+ * File:      driver_example.hpp
+ * Category:  abstraction/drivers/components/EXAMPLE
+ * Author:    XCR1793 (Feather Forge)
+ * 
+ * Purpose:
+ *    Example driver showing coding style conventions and best
+ *    practices for the ARCOS abstraction framework.
+ *****************************************************************/
+
+#ifndef ARCOS_ABSTRACTION_DRIVERS_DRIVER_EXAMPLE_HPP_
+#define ARCOS_ABSTRACTION_DRIVERS_DRIVER_EXAMPLE_HPP_
+
+#include <stdint.h>
+
+namespace arcos::abstraction::drivers{
+
+/** Example configuration structure */
+struct ExampleConfig{
+  int buffer_size = 1024;
+  bool enable_feature = false;
 };
-```
 
-### Performance Considerations
-
-```cpp
-// Mark hot path functions inline
-inline uint8_t convert8to5(uint8_t value){
-  return value >> 3;
-}
-
-// Use const references to avoid copies
-void processPixels(const std::vector<RGB>& pixels){
-  for(const RGB& pixel : pixels){
-    // process
-  }
-}
-
-// Minimize function calls in tight loops
-void convertBuffer(){
-  // Cache frequently accessed values
-  int w = width;
-  int h = height;
-  
-  for(int y = 0; y < h; y++){
-    for(int x = 0; x < w; x++){
-      // tight loop
-    }
-  }
-}
-```
-
-### Platform Abstraction
-
-```cpp
-// Define clean interfaces
-class IPlatformHAL{
+/** Example driver class */
+class ExampleDriver{
 public:
-  virtual ~IPlatformHAL() = default;
+  ExampleDriver();
+  ~ExampleDriver();
   
-  virtual bool init() = 0;
-  virtual void delayMs(uint32_t ms) = 0;
-  virtual uint64_t getTimeMicros() = 0;
+  /** Initialize the driver
+   * @param config Configuration parameters
+   * @return true if successful
+   */
+  bool init(const ExampleConfig& config);
+  
+  /** Process data
+   * @param data Input data pointer
+   * @param size Data size in bytes
+   * @return Number of bytes processed
+   */
+  int process(const uint8_t* data, int size);
+  
+  /** Check if initialized */
+  bool isInitialized() const { return initialized_; }
+  
+private:
+  /** Internal state */
+  bool initialized_;
+  int buffer_size_;
+  uint8_t* internal_buffer_;
+  
+  /** Internal helper method */
+  void resetBuffers();
 };
 
-// Implement for specific platform
-class ESP32HAL : public IPlatformHAL{
-public:
-  bool init() override{
-    // ESP32-specific initialization
-  }
-  
-  void delayMs(uint32_t ms) override{
-    vTaskDelay(pdMS_TO_TICKS(ms));
-  }
-};
+} // namespace arcos::abstraction::drivers
+
+#endif // ARCOS_ABSTRACTION_DRIVERS_DRIVER_EXAMPLE_HPP_
 ```
-
----
-
-## Code Examples
-
-### Good Example
-
-```cpp
-void HUB75Driver::setBrightness(uint8_t brightness){
-  if(brightness != bcm_brightness){
-    bcm_brightness = brightness;
-    convertToBCM();
-  }
-}
-
-void HUB75Driver::fillScreen(RGB color){
-  int total_pixels = width * height;
-  
-  for(int i = 0; i < panel_count; i++){
-    for(int j = 0; j < total_pixels / panel_count; j++){
-      framebuffer[i][j] = color;
-    }
-  }
-}
-
-RGB HUB75Driver::getPixel(int x, int y){
-  if(x < 0 || x >= width || y < 0 || y >= height){
-    return RGB(0, 0, 0);
-  }
-  
-  int panel_index = (dual_display_mode && x >= panel_width) ? 1 : 0;
-  int local_x = dual_display_mode ? (x % panel_width) : x;
-  
-  return framebuffer[panel_index][y * panel_width + local_x];
-}
-```
-
-### Bad Example (Avoid)
-
-```cpp
-// Poor naming, inconsistent style
-void HUB75Driver::SetBrightness(uint8_t b) {  // Wrong: PascalCase for method
-  if (b != bcm_brightness) {  // Wrong: space before opening brace
-    bcm_brightness = b;  // Poor: single letter variable
-    convertToBCM();
-  }
-}
-
-// No bounds checking, unclear logic
-void HUB75Driver::FillScreen(RGB color) {
-  for (int i = 0; i < width * height; i++) {
-    framebuffer[0][i] = color;  // Wrong: assumes single panel
-  }
-}
-
-// Magic numbers, no error handling
-RGB HUB75Driver::getPixel(int x, int y) {
-  return framebuffer[0][y * 64 + x];  // Wrong: magic number, no validation
-}
-```
-
----
 
 ## Summary
 
-**Key Points:**
-1. Use **tighter formatting**: `}else{` not `} else {`
-2. Use **snake_case** for variables, **camelCase** for functions, **PascalCase** for classes
-3. Use **2 spaces** for indentation
-4. Keep lines under **100 characters** (max 120)
-5. Use **const correctness** and **explicit types**
-6. **Comment complex logic**, keep simple code self-documenting
-7. **Validate inputs** and handle errors gracefully
-8. **Optimize hot paths** (BCM conversion, DMA operations)
-
-Following these conventions ensures the codebase remains clean, consistent, and maintainable.
+Key points to remember:
+- **2-space indentation**
+- **Tight braces** (no space before `{`)
+- **camelCase** for methods
+- **snake_case** for variables
+- **PascalCase** for classes
+- Use const correctness
+- Document public APIs
+- Clear ownership semantics
