@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <cstddef>
-#include "dma_buffer_manager.hpp"
+#include "hal_dma_buffer.hpp"  // Renamed from dma_buffer_manager.hpp
 
 /**
  * @brief Parallel Buffer Management Class

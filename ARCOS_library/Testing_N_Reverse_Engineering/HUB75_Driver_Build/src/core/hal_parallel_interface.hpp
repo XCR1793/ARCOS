@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <cstddef>
-#include "platform_hal.hpp"
+#include "platform_hal.hpp"  // In same core/ folder
 
 /**
  * @brief Configuration structure for parallel hardware interface

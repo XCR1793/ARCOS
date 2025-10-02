@@ -1,5 +1,5 @@
-#include "parallel_buffer.hpp"
-#include "platform_hal.hpp"
+#include "../../core/hal_parallel_buffer.hpp"
+#include "../../core/platform_hal.hpp"
 #include <cstring>
 
 static const char* TAG = "PARALLEL_BUFFER";

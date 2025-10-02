@@ -8,7 +8,7 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_task_wdt.h"
-#include "hub75_driver.hpp"
+#include "driver/HUB75/hub75_driver.hpp"
 
 static const char* TAG = "HSL_DEMO";
 

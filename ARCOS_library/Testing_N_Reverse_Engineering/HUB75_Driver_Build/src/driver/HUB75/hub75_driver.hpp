@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <cstddef>          // For size_t
-#include "platform_hal.hpp" // Platform abstraction layer
+#include "../../core/platform_hal.hpp" // Platform abstraction layer
 
 /** Forward declarations of abstract interfaces */
 class IParallelHardware;

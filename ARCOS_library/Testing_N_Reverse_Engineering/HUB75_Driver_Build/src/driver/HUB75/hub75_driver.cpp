@@ -1,9 +1,9 @@
 #include "hub75_driver.hpp"
-#include "parallel_hardware_interface.hpp"
-#include "dma_buffer_manager.hpp"
-#include "lcd_parallel.hpp"          // Concrete implementation
-#include "parallel_buffer.hpp"       // Concrete implementation
-#include "platform_hal.hpp"
+#include "../../core/hal_parallel_interface.hpp"
+#include "../../core/hal_dma_buffer.hpp"
+#include "../../platform/esp32_s3/lcd_parallel.hpp"     // ESP32-S3 implementation
+#include "../../core/hal_parallel_buffer.hpp"           // Buffer management
+#include "../../core/platform_hal.hpp"
 #include <cstring>
 #include <cmath>
 

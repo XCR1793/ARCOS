@@ -1,7 +1,7 @@
 #pragma once
 
-#include "parallel_hardware_interface.hpp"
-#include "platform_hal.hpp"
+#include "../../core/hal_parallel_interface.hpp"
+#include "../../core/platform_hal.hpp"
 
 /** Forward declaration for platform-specific I2S handle */
 struct PlatformI2sHandle;

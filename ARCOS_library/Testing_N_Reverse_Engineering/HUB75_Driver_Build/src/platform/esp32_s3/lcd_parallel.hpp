@@ -2,8 +2,8 @@
 
 #include <cstdint>
 #include <cstddef>
-#include "platform_hal.hpp"
-#include "parallel_hardware_interface.hpp"
+#include "../../core/platform_hal.hpp"
+#include "../../core/hal_parallel_interface.hpp"
 
 /** Forward declarations for platform-specific types (opaque pointers) */
 struct PlatformDmaChannel;
