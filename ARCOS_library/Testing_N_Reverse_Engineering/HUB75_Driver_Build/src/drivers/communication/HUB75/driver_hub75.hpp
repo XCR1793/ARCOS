@@ -1,11 +1,9 @@
 /*****************************************************************
  * File:      driver_hub75.hpp
- * Category:  abstraction/drivers/components/HUB75
+ * Category:  abstraction/drivers/communication/HUB75
  * 
  * Purpose:    HUB75 LED matrix display driver abstraction
- *****************************************************************/
-
-#ifndef ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_
+*****************************************************************/#ifndef ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_
 #define ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_
 
 #include <stdint.h>
@@ -250,5 +248,8 @@ private:
 };
 
 } // namespace arcos::abstraction::drivers
+
+// Include implementation
+#include "driver_hub75_impl.hpp"
 
 #endif // ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_

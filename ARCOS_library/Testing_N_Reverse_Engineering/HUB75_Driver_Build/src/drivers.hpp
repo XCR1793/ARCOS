@@ -17,7 +17,7 @@
 #include "drivers/core/driver_base.hpp"
 
 // Device drivers
-#include "drivers/components/HUB75/driver_hub75.hpp"
+#include "drivers/communication/HUB75/driver_hub75.hpp"
 
 // HAL abstraction (ensure HAL is included)
 #include "hal.hpp"

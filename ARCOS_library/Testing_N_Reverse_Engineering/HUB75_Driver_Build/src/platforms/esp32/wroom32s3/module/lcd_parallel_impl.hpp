@@ -1,3 +1,11 @@
+/*****************************************************************
+ * File:      lcd_parallel_impl.hpp
+ * Category:  abstraction/platforms/esp32/wroom32s3/module
+ * Author:    XCR1793 (Feather Forge)
+ * 
+ * Purpose:    LCD parallel interface implementation
+ *****************************************************************/
+
 #include "lcd_parallel.hpp"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -14,7 +22,9 @@
 
 namespace arcos::abstraction{
 
-static const char* TAG = "LCD_PARALLEL";
+namespace{
+static const char* LCD_PARALLEL_TAG = "LCD_PARALLEL";
+}
 
 LcdParallel::LcdParallel() 
   : dma_chan(nullptr)
@@ -44,12 +54,12 @@ LcdParallelConfig LcdParallel::getDefaultConfig(){
 
 bool LcdParallel::init(const PinNumber* data_pins, const LcdParallelConfig& config){
   if(initialized){
-    ESP_LOGW(TAG, "LCD parallel already initialized");
+    ESP_LOGW(LCD_PARALLEL_TAG, "LCD parallel already initialized");
     return true;
   }
   
   if(!data_pins){
-    ESP_LOGE(TAG, "Data pins cannot be nullptr");
+    ESP_LOGE(LCD_PARALLEL_TAG, "Data pins cannot be nullptr");
     return false;
   }
   
@@ -63,8 +73,8 @@ bool LcdParallel::init(const PinNumber* data_pins, const LcdParallelConfig& conf
   hw_config.data_width = config.data_width;
   hw_config.clock_pin = config.clock_pin;
   
-  ESP_LOGI(TAG, "Initializing ESP32-S3 LCD peripheral for %d-bit parallel output", this->config.data_width);
-  ESP_LOGI(TAG, "Target frequency: %d Hz", this->config.clock_freq_hz);
+  ESP_LOGI(LCD_PARALLEL_TAG, "Initializing ESP32-S3 LCD peripheral for %d-bit parallel output", this->config.data_width);
+  ESP_LOGI(LCD_PARALLEL_TAG, "Target frequency: %d Hz", this->config.clock_freq_hz);
   
   /** Enable LCD_CAM peripheral */
   periph_module_enable(PERIPH_LCD_CAM_MODULE);
@@ -92,7 +102,7 @@ bool LcdParallel::init(const PinNumber* data_pins, const LcdParallelConfig& conf
   LCD_CAM.lcd_clock.lcd_clkm_div_b = 0;                 // B divider
   
   uint32_t actual_freq = base_freq / divider;
-  ESP_LOGI(TAG, "Actual LCD clock frequency: %d Hz (divider: %d)", actual_freq, divider);
+  ESP_LOGI(LCD_PARALLEL_TAG, "Actual LCD clock frequency: %d Hz (divider: %d)", actual_freq, divider);
   
   /** Configure LCD control registers for 16-bit parallel mode */
   LCD_CAM.lcd_ctrl.lcd_rgb_mode_en = 0;     // i8080 interface mode
@@ -113,7 +123,7 @@ bool LcdParallel::init(const PinNumber* data_pins, const LcdParallelConfig& conf
   LCD_CAM.lcd_data_dout_mode.val = 0;       // No output delay
   
   /** Connect GPIO pins to LCD data signals (only up to data_width) */
-  ESP_LOGI(TAG, "Connecting %d GPIO pins to LCD data outputs", this->config.data_width);
+  ESP_LOGI(LCD_PARALLEL_TAG, "Connecting %d GPIO pins to LCD data outputs", this->config.data_width);
   for(int i = 0; i < this->config.data_width && i < 16; i++){
     gpio_num_t pin = static_cast<gpio_num_t>(data_pins[i]);
     if(pin != GPIO_NUM_NC){
@@ -133,14 +143,14 @@ bool LcdParallel::init(const PinNumber* data_pins, const LcdParallelConfig& conf
       /** Set maximum drive strength */
       gpio_set_drive_capability(pin, GPIO_DRIVE_CAP_3);
       
-      ESP_LOGD(TAG, "GPIO %d -> LCD_DATA_OUT%d", (int)pin, i);
+      ESP_LOGD(LCD_PARALLEL_TAG, "GPIO %d -> LCD_DATA_OUT%d", (int)pin, i);
     }
   }
   
   /** Configure external clock pin if specified */
   gpio_num_t clock_pin_gpio = static_cast<gpio_num_t>(this->config.clock_pin);
   if(clock_pin_gpio != GPIO_NUM_NC){
-    ESP_LOGI(TAG, "Configuring external clock output on GPIO %d", (int)clock_pin_gpio);
+    ESP_LOGI(LCD_PARALLEL_TAG, "Configuring external clock output on GPIO %d", (int)clock_pin_gpio);
     
     /** Configure clock GPIO */
     gpio_config_t clock_conf = {
@@ -158,9 +168,9 @@ bool LcdParallel::init(const PinNumber* data_pins, const LcdParallelConfig& conf
     /** Set maximum drive strength for clean clock signal */
     gpio_set_drive_capability(clock_pin_gpio, GPIO_DRIVE_CAP_3);
     
-    ESP_LOGI(TAG, "GPIO %d -> LCD_PCLK (External Clock Output)", (int)clock_pin_gpio);
+    ESP_LOGI(LCD_PARALLEL_TAG, "GPIO %d -> LCD_PCLK (External Clock Output)", (int)clock_pin_gpio);
   } else {
-    ESP_LOGD(TAG, "No external clock pin configured - clock stays internal");
+    ESP_LOGD(LCD_PARALLEL_TAG, "No external clock pin configured - clock stays internal");
   }
   
   /** Allocate GDMA channel */
@@ -176,7 +186,7 @@ bool LcdParallel::init(const PinNumber* data_pins, const LcdParallelConfig& conf
   gdma_channel_handle_t esp32_dma_chan = nullptr;
   esp_err_t ret = gdma_new_ahb_channel(&dma_config, &esp32_dma_chan);
   if(ret != ESP_OK){
-    ESP_LOGE(TAG, "Failed to allocate GDMA channel: %s", esp_err_to_name(ret));
+    ESP_LOGE(LCD_PARALLEL_TAG, "Failed to allocate GDMA channel: %s", esp_err_to_name(ret));
     return false;
   }
   dma_chan = reinterpret_cast<PlatformDmaChannel*>(esp32_dma_chan);
@@ -184,7 +194,7 @@ bool LcdParallel::init(const PinNumber* data_pins, const LcdParallelConfig& conf
   /** Connect GDMA to LCD peripheral */
   ret = gdma_connect(esp32_dma_chan, GDMA_MAKE_TRIGGER(GDMA_TRIG_PERIPH_LCD, 0));
   if(ret != ESP_OK){
-    ESP_LOGE(TAG, "Failed to connect GDMA to LCD: %s", esp_err_to_name(ret));
+    ESP_LOGE(LCD_PARALLEL_TAG, "Failed to connect GDMA to LCD: %s", esp_err_to_name(ret));
     return false;
   }
   
@@ -196,18 +206,18 @@ bool LcdParallel::init(const PinNumber* data_pins, const LcdParallelConfig& conf
   gdma_config_transfer(esp32_dma_chan, &transfer_config);
   
   initialized = true;
-  ESP_LOGI(TAG, "LCD parallel interface initialized successfully");
+  ESP_LOGI(LCD_PARALLEL_TAG, "LCD parallel interface initialized successfully");
   return true;
 }
 
 bool LcdParallel::setBuffer(uint16_t* buffer, size_t buffer_len){
   if(!initialized){
-    ESP_LOGE(TAG, "LCD parallel not initialized");
+    ESP_LOGE(LCD_PARALLEL_TAG, "LCD parallel not initialized");
     return false;
   }
   
   if(!buffer || buffer_len == 0){
-    ESP_LOGE(TAG, "Invalid buffer parameters");
+    ESP_LOGE(LCD_PARALLEL_TAG, "Invalid buffer parameters");
     return false;
   }
   
@@ -231,14 +241,14 @@ bool LcdParallel::setBuffer(uint16_t* buffer, size_t buffer_len){
   const size_t max_desc_size = 4092; // Maximum DMA descriptor size
   desc_count = (buffer_bytes + max_desc_size - 1) / max_desc_size;
   
-  ESP_LOGI(TAG, "Setting buffer: %d samples (%d bytes), DMA descriptors: %d", 
+  ESP_LOGI(LCD_PARALLEL_TAG, "Setting buffer: %d samples (%d bytes), DMA descriptors: %d", 
            buffer_len, buffer_bytes, desc_count);
   
   /** Allocate DMA descriptors */
   dma_descriptor_t* esp32_descriptors = static_cast<dma_descriptor_t*>(
     heap_caps_malloc(desc_count * sizeof(dma_descriptor_t), MALLOC_CAP_DMA));
   if(!esp32_descriptors){
-    ESP_LOGE(TAG, "Failed to allocate DMA descriptors");
+    ESP_LOGE(LCD_PARALLEL_TAG, "Failed to allocate DMA descriptors");
     return false;
   }
   dma_descriptors = reinterpret_cast<PlatformDmaDescriptor*>(esp32_descriptors);
@@ -269,10 +279,10 @@ bool LcdParallel::setBuffer(uint16_t* buffer, size_t buffer_len){
     buf_ptr += chunk_size;
     remaining -= chunk_size;
     
-    ESP_LOGD(TAG, "DMA desc[%d]: %d bytes at %p", i, chunk_size, esp32_descriptors[i].buffer);
+    ESP_LOGD(LCD_PARALLEL_TAG, "DMA desc[%d]: %d bytes at %p", i, chunk_size, esp32_descriptors[i].buffer);
   }
   
-  ESP_LOGI(TAG, "Buffer set successfully");
+  ESP_LOGI(LCD_PARALLEL_TAG, "Buffer set successfully");
   return true;
 }
 
@@ -282,26 +292,26 @@ bool LcdParallel::setDirectBuffer(uint16_t* buffer_ptr, size_t buffer_len){
 
 bool LcdParallel::swapBuffer(uint16_t* new_buffer_ptr, size_t buffer_len){
   if(!initialized){
-    ESP_LOGE(TAG, "LCD parallel not initialized");
+    ESP_LOGE(LCD_PARALLEL_TAG, "LCD parallel not initialized");
     return false;
   }
   
   if(!new_buffer_ptr || buffer_len == 0){
-    ESP_LOGE(TAG, "Invalid buffer parameters");
+    ESP_LOGE(LCD_PARALLEL_TAG, "Invalid buffer parameters");
     return false;
   }
   
   if(buffer_len != this->buffer_len){
-    ESP_LOGE(TAG, "Buffer size mismatch: expected %d, got %d", this->buffer_len, buffer_len);
+    ESP_LOGE(LCD_PARALLEL_TAG, "Buffer size mismatch: expected %d, got %d", this->buffer_len, buffer_len);
     return false;
   }
   
   if(!dma_descriptors || desc_count == 0){
-    ESP_LOGE(TAG, "No DMA descriptors available");
+    ESP_LOGE(LCD_PARALLEL_TAG, "No DMA descriptors available");
     return false;
   }
   
-  ESP_LOGD(TAG, "Swapping buffer seamlessly (no transmission stop)");
+  ESP_LOGD(LCD_PARALLEL_TAG, "Swapping buffer seamlessly (no transmission stop)");
   
   this->buffer = new_buffer_ptr;  // Update buffer pointer
   
@@ -322,7 +332,7 @@ bool LcdParallel::swapBuffer(uint16_t* new_buffer_ptr, size_t buffer_len){
     remaining -= chunk_size;
   }
   
-  ESP_LOGD(TAG, "Buffer swapped successfully - new buffer at %p", new_buffer_ptr);
+  ESP_LOGD(LCD_PARALLEL_TAG, "Buffer swapped successfully - new buffer at %p", new_buffer_ptr);
   return true;
 }
 
@@ -336,21 +346,21 @@ size_t LcdParallel::getBufferSize() const{
 
 bool LcdParallel::start(){
   if(!initialized){
-    ESP_LOGE(TAG, "LCD parallel not initialized");
+    ESP_LOGE(LCD_PARALLEL_TAG, "LCD parallel not initialized");
     return false;
   }
   
   if(!dma_descriptors){
-    ESP_LOGE(TAG, "No buffer set - call setBuffer() first");
+    ESP_LOGE(LCD_PARALLEL_TAG, "No buffer set - call setBuffer() first");
     return false;
   }
   
   if(running){
-    ESP_LOGW(TAG, "LCD parallel already running");
+    ESP_LOGW(LCD_PARALLEL_TAG, "LCD parallel already running");
     return true;
   }
   
-  ESP_LOGI(TAG, "Starting LCD parallel DMA transfer");
+  ESP_LOGI(LCD_PARALLEL_TAG, "Starting LCD parallel DMA transfer");
   
   /** Reset LCD FIFO */
   LCD_CAM.lcd_misc.lcd_afifo_reset = 1;
@@ -365,7 +375,7 @@ bool LcdParallel::start(){
   gdma_channel_handle_t esp32_dma_chan = reinterpret_cast<gdma_channel_handle_t>(dma_chan);
   esp_err_t ret = gdma_start(esp32_dma_chan, reinterpret_cast<intptr_t>(&esp32_descriptors[0]));
   if(ret != ESP_OK){
-    ESP_LOGE(TAG, "Failed to start GDMA: %s", esp_err_to_name(ret));
+    ESP_LOGE(LCD_PARALLEL_TAG, "Failed to start GDMA: %s", esp_err_to_name(ret));
     return false;
   }
   
@@ -376,7 +386,7 @@ bool LcdParallel::start(){
   LCD_CAM.lcd_user.lcd_start = 1;
   
   running = true;
-  ESP_LOGI(TAG, "LCD parallel DMA transfer started");
+  ESP_LOGI(LCD_PARALLEL_TAG, "LCD parallel DMA transfer started");
   return true;
 }
 
@@ -385,7 +395,7 @@ void LcdParallel::stop(){
     return;
   }
   
-  ESP_LOGI(TAG, "Stopping LCD parallel DMA transfer");
+  ESP_LOGI(LCD_PARALLEL_TAG, "Stopping LCD parallel DMA transfer");
   
   /** Stop LCD transmission */
   LCD_CAM.lcd_user.lcd_start = 0;
@@ -398,7 +408,7 @@ void LcdParallel::stop(){
   }
   
   running = false;
-  ESP_LOGI(TAG, "LCD parallel DMA transfer stopped");
+  ESP_LOGI(LCD_PARALLEL_TAG, "LCD parallel DMA transfer stopped");
 }
 
 bool LcdParallel::isRunning() const {

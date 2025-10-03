@@ -1,6 +1,6 @@
 /*****************************************************************
  * File:      driver_hub75_i2s.hpp
- * Category:  abstraction/drivers/components/HUB75
+ * Category:  abstraction/drivers/communication/HUB75
  * 
  * Purpose:    I2S protocol implementation for HUB75 display
  *****************************************************************/
@@ -81,5 +81,8 @@ private:
 };
 
 } // namespace arcos::abstraction::drivers
+
+// Include implementation
+#include "driver_hub75_i2s_impl.hpp"
 
 #endif // ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_I2S_HPP_

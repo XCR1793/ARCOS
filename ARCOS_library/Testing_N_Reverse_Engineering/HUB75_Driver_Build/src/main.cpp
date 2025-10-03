@@ -12,7 +12,7 @@
 // ARCOS-style abstraction - only 2 includes needed!
 #include "hal.hpp"       // All HAL APIs + platform implementation
 #include "drivers.hpp"   // All device drivers
-#include "drivers/components/HUB75/driver_hub75_i2s.hpp"  // I2S protocol for HUB75
+#include "drivers/communication/HUB75/driver_hub75_i2s.hpp"  // I2S protocol for HUB75
 
 using namespace arcos::abstraction;
 using namespace arcos::abstraction::drivers;

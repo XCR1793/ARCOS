@@ -10,7 +10,7 @@ Complete API reference for the ARCOS HUB75 LED matrix driver with protocol abstr
 
 Main driver class managing framebuffer and display operations.
 
-**Header:** `drivers/components/HUB75/driver_hub75.hpp`  
+**Header:** `drivers/communication/HUB75/driver_hub75.hpp`  
 **Namespace:** `arcos::abstraction::drivers`
 
 ### Constructor / Destructor
@@ -365,7 +365,7 @@ Copies framebuffer contents to destination array.
 
 Simple RGB color structure.
 
-**Header:** `drivers/components/HUB75/driver_hub75.hpp`
+**Header:** `drivers/communication/HUB75/driver_hub75.hpp`
 
 ### Definition
 
@@ -395,7 +395,7 @@ RGB custom(128, 64, 200);
 
 Display configuration structure.
 
-**Header:** `drivers/components/HUB75/driver_hub75.hpp`
+**Header:** `drivers/communication/HUB75/driver_hub75.hpp`
 
 ### Display Settings
 
@@ -499,7 +499,7 @@ config.panel_inversions[1].flip_horizontal = true;  // Flip panel 1
 
 Abstract protocol interface for hardware transmission.
 
-**Header:** `drivers/components/HUB75/driver_hub75_protocol.hpp`  
+**Header:** `drivers/communication/HUB75/driver_hub75_protocol.hpp`  
 **Namespace:** `arcos::abstraction::drivers`
 
 ### Pure Virtual Methods
@@ -554,7 +554,7 @@ Get human-readable backend name.
 
 I2S protocol implementation using LCD_CAM peripheral.
 
-**Header:** `drivers/components/HUB75/driver_hub75_i2s.hpp`  
+**Header:** `drivers/communication/HUB75/driver_hub75_i2s.hpp`  
 **Namespace:** `arcos::abstraction::drivers`
 
 ### Extended Initialization
@@ -597,7 +597,7 @@ Implements all `IHUB75Protocol` methods:
 ```cpp
 #include "hal.hpp"
 #include "drivers.hpp"
-#include "drivers/components/HUB75/driver_hub75_i2s.hpp"
+#include "drivers/communication/HUB75/driver_hub75_i2s.hpp"
 
 using namespace arcos::abstraction::drivers;
 

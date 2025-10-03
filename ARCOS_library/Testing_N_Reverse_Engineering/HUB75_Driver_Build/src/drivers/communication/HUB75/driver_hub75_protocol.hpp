@@ -1,6 +1,7 @@
 /*****************************************************************
  * File:      driver_hub75_protocol.hpp
- * Category:  abstraction/drivers/components/HUB75
+ * Category:  abstraction/drivers/communication/HUB75
+ * Author:    XCR1793 (Feather Forge)
  * 
  * Purpose:    Protocol interface for HUB75 display transmission
  *             Allows different protocol implementations (I2S, GPIO, etc.)
@@ -12,6 +13,22 @@
 #include <stdint.h>
 
 namespace arcos::abstraction::drivers{
+
+/** HUB75 protocol bit positions (shared across all implementations) */
+constexpr int R0_BIT  = 0;
+constexpr int G0_BIT  = 1;
+constexpr int B0_BIT  = 2;
+constexpr int R1_BIT  = 3;
+constexpr int G1_BIT  = 4;
+constexpr int B1_BIT  = 5;
+constexpr int LAT_BIT = 6;
+constexpr int OE_BIT  = 7;
+constexpr int A_BIT   = 8;
+constexpr int B_BIT   = 9;
+constexpr int C_BIT   = 10;
+constexpr int D_BIT   = 11;
+constexpr int E_BIT   = 12;
+constexpr int OE2_BIT = 13;  // Second OE pin
 
 /** Forward declaration of HUB75Config */
 struct HUB75Config;

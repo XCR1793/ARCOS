@@ -49,3 +49,6 @@ private:
 };
 
 } // namespace arcos::abstraction
+
+// Include implementation
+#include "i2s_parallel_driver_impl.hpp"

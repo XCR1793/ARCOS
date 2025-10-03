@@ -1,3 +1,11 @@
+/*****************************************************************
+ * File:      esp32_platform_functions_impl.hpp
+ * Category:  abstraction/platforms/esp32/wroom32s3/module
+ * Author:    XCR1793 (Feather Forge)
+ * 
+ * Purpose:    ESP32 platform HAL function implementations
+ *****************************************************************/
+
 #include "esp32_platform_impl.hpp"
 #include "driver/gpio.h"
 #include "esp_heap_caps.h"

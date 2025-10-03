@@ -10,10 +10,16 @@
 #ifndef ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_HAL_CONNECTOR_HPP_
 #define ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_HAL_CONNECTOR_HPP_
 
-// Platform-specific HAL implementations
+// Platform-specific HAL implementations (headers include their implementations)
 #include "lcd_parallel.hpp"
 #include "i2s_parallel_driver.hpp"
 #include "esp32_platform_impl.hpp"
+
+// Platform implementation functions
+#include "esp32_platform_functions_impl.hpp"
+
+// DMA buffer manager implementation
+#include "parallel_buffer_impl.hpp"
 
 namespace arcos::abstraction{
 

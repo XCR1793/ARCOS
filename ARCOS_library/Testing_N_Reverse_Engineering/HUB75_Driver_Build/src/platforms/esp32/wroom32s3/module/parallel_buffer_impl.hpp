@@ -1,3 +1,11 @@
+/*****************************************************************
+ * File:      parallel_buffer_impl.hpp
+ * Category:  abstraction/platforms/esp32/wroom32s3/module
+ * Author:    XCR1793 (Feather Forge)
+ * 
+ * Purpose:    Parallel buffer management implementation
+ *****************************************************************/
+
 #include "../../../../core/hal_protocal_parallel_buffer.hpp"
 #include "../../../../core/platform_hal.hpp"
 #include <cstring>
@@ -6,7 +14,9 @@ namespace arcos::abstraction{
 
 using dma::BufferMode;
 
-static const char* TAG = "PARALLEL_BUFFER";
+namespace{
+static const char* PARALLEL_BUFFER_TAG = "PARALLEL_BUFFER";
+}
 
 ParallelBuffer::ParallelBuffer() 
   : buffers(nullptr)
@@ -28,7 +38,7 @@ ParallelBuffer::~ParallelBuffer() {
 
 bool ParallelBuffer::alloc(size_t sample_count){
   if(sample_count == 0){
-    PLATFORM_LOG_E(TAG, "Sample count cannot be zero");
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "Sample count cannot be zero");
     return false;
   }
 
@@ -41,14 +51,14 @@ bool ParallelBuffer::alloc(size_t sample_count){
   buffer = static_cast<uint16_t*>(getPlatformHAL()->allocateMemory(buffer_bytes, MEM_CAP_DMA));
   
   if(!buffer){
-    PLATFORM_LOG_E(TAG, "Failed to allocate DMA buffer (%d bytes)", buffer_bytes);
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "Failed to allocate DMA buffer (%d bytes)", buffer_bytes);
     buffer_size = 0;
     return false;
   }
   
   buffer_size = sample_count;
   legacy_owns_buffer = true;
-  PLATFORM_LOG_I(TAG, "Allocated DMA buffer: %d samples (%d bytes)", sample_count, buffer_bytes);
+  PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "Allocated DMA buffer: %d samples (%d bytes)", sample_count, buffer_bytes);
   
   /** Initialize to zero */
   std::memset(buffer, 0, buffer_bytes);
@@ -76,7 +86,7 @@ void ParallelBuffer::free(){
   // Free legacy single buffer
   if(buffer && legacy_owns_buffer){
     getPlatformHAL()->freeMemory(buffer);
-    PLATFORM_LOG_I(TAG, "DMA buffer freed");
+    PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "DMA buffer freed");
   }
   buffer = nullptr;
   
@@ -97,17 +107,17 @@ size_t ParallelBuffer::getSize() const {
 bool ParallelBuffer::fillPattern(size_t high_samples, size_t low_samples,
                                  uint16_t high_value, uint16_t low_value){
   if(!buffer || buffer_size == 0){
-    PLATFORM_LOG_E(TAG, "No buffer allocated");
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "No buffer allocated");
     return false;
   }
   
   if(high_samples + low_samples > buffer_size){
-    PLATFORM_LOG_E(TAG, "Pattern size (%d) exceeds buffer size (%d)", 
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "Pattern size (%d) exceeds buffer size (%d)", 
              high_samples + low_samples, buffer_size);
     return false;
   }
   
-  PLATFORM_LOG_I(TAG, "Filling pattern: %d HIGH (0x%04X), %d LOW (0x%04X)", 
+  PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "Filling pattern: %d HIGH (0x%04X), %d LOW (0x%04X)", 
            high_samples, high_value, low_samples, low_value);
   
   /** Fill HIGH samples */
@@ -123,7 +133,7 @@ bool ParallelBuffer::fillPattern(size_t high_samples, size_t low_samples,
   /** If pattern is smaller than buffer, repeat it */
   size_t pattern_size = high_samples + low_samples;
   if(pattern_size < buffer_size){
-    PLATFORM_LOG_I(TAG, "Repeating pattern to fill buffer");
+    PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "Repeating pattern to fill buffer");
     for(size_t i = pattern_size; i < buffer_size; i++){
       buffer[i] = buffer[i % pattern_size];
     }
@@ -134,11 +144,11 @@ bool ParallelBuffer::fillPattern(size_t high_samples, size_t low_samples,
 
 void ParallelBuffer::fillSolid(uint16_t value){
   if(!buffer || buffer_size == 0){
-    PLATFORM_LOG_E(TAG, "No buffer allocated");
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "No buffer allocated");
     return;
   }
   
-  PLATFORM_LOG_I(TAG, "Filling buffer with solid value: 0x%04X (%d samples)", value, buffer_size);
+  PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "Filling buffer with solid value: 0x%04X (%d samples)", value, buffer_size);
   
   for(size_t i = 0; i < buffer_size; i++){
     buffer[i] = value;
@@ -148,7 +158,7 @@ void ParallelBuffer::fillSolid(uint16_t value){
 bool ParallelBuffer::createTiming(uint32_t high_duration_ms, uint32_t low_duration_ms,
                                   uint32_t sample_rate_hz, uint16_t high_value, uint16_t low_value){
   if(!buffer || buffer_size == 0 || sample_rate_hz == 0){
-    PLATFORM_LOG_E(TAG, "Invalid parameters or no buffer allocated");
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "Invalid parameters or no buffer allocated");
     return false;
   }
   
@@ -157,13 +167,13 @@ bool ParallelBuffer::createTiming(uint32_t high_duration_ms, uint32_t low_durati
   size_t low_samples = (low_duration_ms * sample_rate_hz) / 1000;
   size_t total_needed = high_samples + low_samples;
   
-  PLATFORM_LOG_I(TAG, "Creating timing pattern:");
-  PLATFORM_LOG_I(TAG, "  HIGH: %d ms -> %d samples", high_duration_ms, high_samples);
-  PLATFORM_LOG_I(TAG, "  LOW:  %d ms -> %d samples", low_duration_ms, low_samples);
-  PLATFORM_LOG_I(TAG, "  Total needed: %d samples, Available: %d samples", total_needed, buffer_size);
+  PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "Creating timing pattern:");
+  PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "  HIGH: %d ms -> %d samples", high_duration_ms, high_samples);
+  PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "  LOW:  %d ms -> %d samples", low_duration_ms, low_samples);
+  PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "  Total needed: %d samples, Available: %d samples", total_needed, buffer_size);
   
   if(total_needed > buffer_size){
-    PLATFORM_LOG_E(TAG, "Timing pattern requires %d samples but buffer only has %d", 
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "Timing pattern requires %d samples but buffer only has %d", 
              total_needed, buffer_size);
     return false;
   }
@@ -173,7 +183,7 @@ bool ParallelBuffer::createTiming(uint32_t high_duration_ms, uint32_t low_durati
 
 bool ParallelBuffer::setDirectPointer(uint16_t* external_buffer, size_t size){
   if(!external_buffer || size == 0){
-    PLATFORM_LOG_E(TAG, "Invalid external buffer pointer or size");
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "Invalid external buffer pointer or size");
     return false;
   }
   
@@ -186,7 +196,7 @@ bool ParallelBuffer::setDirectPointer(uint16_t* external_buffer, size_t size){
   buffer_size = size;
   legacy_owns_buffer = false;
   
-  PLATFORM_LOG_I(TAG, "Set direct pointer: %d samples (zero-copy mode)", size);
+  PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "Set direct pointer: %d samples (zero-copy mode)", size);
   return true;
 }
 
@@ -198,7 +208,7 @@ uint16_t* ParallelBuffer::getDirectAccess() const{
 
 bool ParallelBuffer::init(const DmaBufferConfig& config){
   if(initialized){
-    PLATFORM_LOG_W(TAG, "Buffer manager already initialized");
+    PLATFORM_LOG_W(PARALLEL_BUFFER_TAG, "Buffer manager already initialized");
     return true;
   }
   
@@ -221,13 +231,13 @@ bool ParallelBuffer::init(const DmaBufferConfig& config){
   back_index = (mode == BufferMode::DOUBLE_BUFFER && num_buffers >= 2) ? 1 : 0;
   initialized = true;
   
-  PLATFORM_LOG_I(TAG, "Buffer manager initialized: %d buffers, mode=%d", num_buffers, (int)mode);
+  PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "Buffer manager initialized: %d buffers, mode=%d", num_buffers, (int)mode);
   return true;
 }
 
 bool ParallelBuffer::allocate(size_t sample_count){
   if(sample_count == 0){
-    PLATFORM_LOG_E(TAG, "Sample count cannot be zero");
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "Sample count cannot be zero");
     return false;
   }
   
@@ -254,7 +264,7 @@ bool ParallelBuffer::allocate(size_t sample_count){
     buffers[i] = static_cast<uint16_t*>(getPlatformHAL()->allocateMemory(buffer_bytes, MEM_CAP_DMA));
     
     if(!buffers[i]){
-      PLATFORM_LOG_E(TAG, "Failed to allocate DMA buffer %d (%d bytes)", i, buffer_bytes);
+      PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "Failed to allocate DMA buffer %d (%d bytes)", i, buffer_bytes);
       // Clean up partially allocated buffers
       for(size_t j = 0; j < i; j++){
         if(buffers[j]){
@@ -269,7 +279,7 @@ bool ParallelBuffer::allocate(size_t sample_count){
     std::memset(buffers[i], 0, buffer_bytes);
   }
   
-  PLATFORM_LOG_I(TAG, "Allocated %d DMA buffers: %d samples each (%d bytes total)", 
+  PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "Allocated %d DMA buffers: %d samples each (%d bytes total)", 
            num_buffers, sample_count, buffer_bytes * num_buffers);
   
   return true;
@@ -309,7 +319,7 @@ size_t ParallelBuffer::getBufferSize() const {
 
 bool ParallelBuffer::swapBuffers(){
   if(mode != BufferMode::DOUBLE_BUFFER || num_buffers < 2){
-    PLATFORM_LOG_W(TAG, "Cannot swap buffers - not in double buffer mode");
+    PLATFORM_LOG_W(PARALLEL_BUFFER_TAG, "Cannot swap buffers - not in double buffer mode");
     return false;
   }
   
@@ -328,7 +338,7 @@ BufferMode ParallelBuffer::getMode() const {
 bool ParallelBuffer::fillBuffer(size_t buffer_index, uint16_t value){
   uint16_t* target_buffer = getBuffer(buffer_index);
   if(!target_buffer || buffer_size == 0){
-    PLATFORM_LOG_E(TAG, "Invalid buffer index or buffer not allocated");
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "Invalid buffer index or buffer not allocated");
     return false;
   }
   
@@ -336,7 +346,7 @@ bool ParallelBuffer::fillBuffer(size_t buffer_index, uint16_t value){
     target_buffer[i] = value;
   }
   
-  PLATFORM_LOG_I(TAG, "Filled buffer %d with value 0x%04X (%d samples)", buffer_index, value, buffer_size);
+  PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "Filled buffer %d with value 0x%04X (%d samples)", buffer_index, value, buffer_size);
   return true;
 }
 
@@ -344,12 +354,12 @@ bool ParallelBuffer::fillPattern(size_t buffer_index, size_t high_samples, size_
                                  uint16_t high_value, uint16_t low_value){
   uint16_t* target_buffer = getBuffer(buffer_index);
   if(!target_buffer || buffer_size == 0){
-    PLATFORM_LOG_E(TAG, "Invalid buffer index or buffer not allocated");
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "Invalid buffer index or buffer not allocated");
     return false;
   }
   
   if(high_samples + low_samples > buffer_size){
-    PLATFORM_LOG_E(TAG, "Pattern size (%d) exceeds buffer size (%d)", 
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "Pattern size (%d) exceeds buffer size (%d)", 
              high_samples + low_samples, buffer_size);
     return false;
   }
@@ -372,7 +382,7 @@ bool ParallelBuffer::fillPattern(size_t buffer_index, size_t high_samples, size_
     }
   }
   
-  PLATFORM_LOG_I(TAG, "Filled buffer %d with pattern: %d HIGH (0x%04X), %d LOW (0x%04X)", 
+  PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "Filled buffer %d with pattern: %d HIGH (0x%04X), %d LOW (0x%04X)", 
            buffer_index, high_samples, high_value, low_samples, low_value);
   
   return true;
@@ -384,12 +394,12 @@ bool ParallelBuffer::isAllocated() const {
 
 bool ParallelBuffer::setExternalBuffer(size_t buffer_index, uint16_t* external_buffer, size_t size){
   if(!external_buffer || size == 0){
-    PLATFORM_LOG_E(TAG, "Invalid external buffer pointer or size");
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "Invalid external buffer pointer or size");
     return false;
   }
   
   if(buffer_index >= num_buffers){
-    PLATFORM_LOG_E(TAG, "Buffer index %d out of range (max %d)", buffer_index, num_buffers - 1);
+    PLATFORM_LOG_E(PARALLEL_BUFFER_TAG, "Buffer index %d out of range (max %d)", buffer_index, num_buffers - 1);
     return false;
   }
   
@@ -402,7 +412,7 @@ bool ParallelBuffer::setExternalBuffer(size_t buffer_index, uint16_t* external_b
   buffer_size = size;
   owns_buffer[buffer_index] = false;
   
-  PLATFORM_LOG_I(TAG, "Set external buffer %d: %d samples (zero-copy mode)", buffer_index, size);
+  PLATFORM_LOG_I(PARALLEL_BUFFER_TAG, "Set external buffer %d: %d samples (zero-copy mode)", buffer_index, size);
   return true;
 }
 

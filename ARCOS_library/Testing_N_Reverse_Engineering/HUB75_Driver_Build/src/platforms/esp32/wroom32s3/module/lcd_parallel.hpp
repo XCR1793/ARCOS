@@ -158,3 +158,6 @@ private:
 };
 
 } // namespace arcos::abstraction
+
+// Include implementation
+#include "lcd_parallel_impl.hpp"

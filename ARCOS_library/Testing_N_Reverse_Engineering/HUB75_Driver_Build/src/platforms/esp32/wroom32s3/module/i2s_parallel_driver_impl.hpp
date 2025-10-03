@@ -1,8 +1,18 @@
+/*****************************************************************
+ * File:      i2s_parallel_driver_impl.hpp
+ * Category:  abstraction/platforms/esp32/wroom32s3/module
+ * Author:    XCR1793 (Feather Forge)
+ * 
+ * Purpose:    Platform-agnostic I2S parallel driver implementation
+ *****************************************************************/
+
 #include "i2s_parallel_driver.hpp"
 
 namespace arcos::abstraction{
 
-static const char* TAG = "I2S_PARALLEL";
+namespace{
+static const char* I2S_PARALLEL_TAG = "I2S_PARALLEL";
+}
 
 /**
  * NOTE: This is now a platform-agnostic I2S parallel driver.
@@ -27,7 +37,7 @@ I2sParallelDriver::I2sParallelDriver()
   , running(false)
   , platform(getPlatformHAL())
 {
-  PLATFORM_LOG_I(TAG, "I2S Parallel Driver initialized (platform-agnostic)");
+  PLATFORM_LOG_I(I2S_PARALLEL_TAG, "I2S Parallel Driver initialized (platform-agnostic)");
 }
 
 I2sParallelDriver::~I2sParallelDriver() {
@@ -42,27 +52,27 @@ I2sParallelDriver::~I2sParallelDriver() {
 
 bool I2sParallelDriver::init(const PinNumber* data_pins, const ParallelHardwareConfig& config){
   if(initialized){
-    PLATFORM_LOG_W(TAG, "Already initialized");
+    PLATFORM_LOG_W(I2S_PARALLEL_TAG, "Already initialized");
     return true;
   }
   
   if(!platform){
-    PLATFORM_LOG_E(TAG, "Platform HAL not available");
+    PLATFORM_LOG_E(I2S_PARALLEL_TAG, "Platform HAL not available");
     return false;
   }
   
   this->config = config;
   
-  PLATFORM_LOG_I(TAG, "Initializing I2S parallel driver (platform-agnostic)");
-  PLATFORM_LOG_I(TAG, "  Data width: %d bits", config.data_width);
-  PLATFORM_LOG_I(TAG, "  Clock freq: %d Hz", config.clock_freq_hz);
-  PLATFORM_LOG_I(TAG, "  Platform: %s", platform->getPlatformName());
+  PLATFORM_LOG_I(I2S_PARALLEL_TAG, "Initializing I2S parallel driver (platform-agnostic)");
+  PLATFORM_LOG_I(I2S_PARALLEL_TAG, "  Data width: %d bits", config.data_width);
+  PLATFORM_LOG_I(I2S_PARALLEL_TAG, "  Clock freq: %d Hz", config.clock_freq_hz);
+  PLATFORM_LOG_I(I2S_PARALLEL_TAG, "  Platform: %s", platform->getPlatformName());
   
   // Configure GPIO pins for output using platform HAL
   for(uint8_t i = 0; i < config.data_width; i++){
     if(data_pins[i] != PIN_NC){
       if(!platform->pinMode(data_pins[i], PinMode::OUTPUT)){
-        PLATFORM_LOG_E(TAG, "Failed to configure pin %d", data_pins[i]);
+        PLATFORM_LOG_E(I2S_PARALLEL_TAG, "Failed to configure pin %d", data_pins[i]);
         return false;
       }
       platform->setPinDriveStrength(data_pins[i], PinDriveStrength::STRONG);
@@ -72,7 +82,7 @@ bool I2sParallelDriver::init(const PinNumber* data_pins, const ParallelHardwareC
   // Configure clock pin if specified
   if(config.clock_pin != PIN_NC){
     if(!platform->pinMode(config.clock_pin, PinMode::OUTPUT)){
-      PLATFORM_LOG_E(TAG, "Failed to configure clock pin %d", config.clock_pin);
+      PLATFORM_LOG_E(I2S_PARALLEL_TAG, "Failed to configure clock pin %d", config.clock_pin);
       return false;
     }
     platform->setPinDriveStrength(config.clock_pin, PinDriveStrength::STRONG);
@@ -82,13 +92,13 @@ bool I2sParallelDriver::init(const PinNumber* data_pins, const ParallelHardwareC
   // and should be implemented in the platform HAL layer
   
   initialized = true;
-  PLATFORM_LOG_I(TAG, "I2S parallel driver initialized successfully");
+  PLATFORM_LOG_I(I2S_PARALLEL_TAG, "I2S parallel driver initialized successfully");
   return true;
 }
 
 bool I2sParallelDriver::setBuffer(uint16_t* buffer, size_t buffer_len){
   if(!initialized){
-    PLATFORM_LOG_E(TAG, "Not initialized");
+    PLATFORM_LOG_E(I2S_PARALLEL_TAG, "Not initialized");
     return false;
   }
   
@@ -96,7 +106,7 @@ bool I2sParallelDriver::setBuffer(uint16_t* buffer, size_t buffer_len){
   this->buffer_len = buffer_len;
   
   // Platform-specific DMA descriptor setup handled by platform HAL
-  PLATFORM_LOG_I(TAG, "Buffer set: %d samples", buffer_len);
+  PLATFORM_LOG_I(I2S_PARALLEL_TAG, "Buffer set: %d samples", buffer_len);
   
   return true;
 }
@@ -107,7 +117,7 @@ bool I2sParallelDriver::setDirectBuffer(uint16_t* buffer_ptr, size_t buffer_len)
 
 bool I2sParallelDriver::swapBuffer(uint16_t* new_buffer_ptr, size_t buffer_len){
   if(!initialized){
-    PLATFORM_LOG_E(TAG, "Not initialized");
+    PLATFORM_LOG_E(I2S_PARALLEL_TAG, "Not initialized");
     return false;
   }
   
@@ -115,7 +125,7 @@ bool I2sParallelDriver::swapBuffer(uint16_t* new_buffer_ptr, size_t buffer_len){
   this->buffer = new_buffer_ptr;
   this->buffer_len = buffer_len;
   
-  PLATFORM_LOG_D(TAG, "Buffer swapped: %d samples", buffer_len);
+  PLATFORM_LOG_D(I2S_PARALLEL_TAG, "Buffer swapped: %d samples", buffer_len);
   return true;
 }
 
@@ -129,12 +139,12 @@ size_t I2sParallelDriver::getBufferSize() const {
 
 bool I2sParallelDriver::start(){
   if(!initialized){
-    PLATFORM_LOG_E(TAG, "Not initialized");
+    PLATFORM_LOG_E(I2S_PARALLEL_TAG, "Not initialized");
     return false;
   }
   
   if(running){
-    PLATFORM_LOG_W(TAG, "Already running");
+    PLATFORM_LOG_W(I2S_PARALLEL_TAG, "Already running");
     return true;
   }
   
@@ -142,7 +152,7 @@ bool I2sParallelDriver::start(){
   // Implementation would call platform->startI2sTransmission() or similar
   
   running = true;
-  PLATFORM_LOG_I(TAG, "I2S transmission started");
+  PLATFORM_LOG_I(I2S_PARALLEL_TAG, "I2S transmission started");
   return true;
 }
 
