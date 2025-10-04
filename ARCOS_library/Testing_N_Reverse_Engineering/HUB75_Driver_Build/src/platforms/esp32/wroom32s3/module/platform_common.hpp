@@ -1,18 +1,19 @@
 /*****************************************************************
- * File:      platform_connector.hpp
+ * File:      platform_common.hpp
  * Category:  platform/esp32_s3
+ * Author:    XCR1793 (Feather Forge)
  * 
  * Purpose:
- *    Platform connector for ESP32-S3 (WROOM/Module variants)
- *    Maps HAL implementations to platform-specific drivers
+ *    Platform common definitions for ESP32-S3 (WROOM/Module variants)
+ *    Provides type aliases and capabilities for platform-specific drivers
  *    
  * Note:
  *    This file makes porting to ARCOS architecture easier by
  *    centralizing platform-specific type definitions.
  *****************************************************************/
 
-#ifndef PLATFORM_ESP32_S3_CONNECTOR_HPP_
-#define PLATFORM_ESP32_S3_CONNECTOR_HPP_
+#ifndef ARCOS_PLATFORMS_ESP32_WROOM32S3_MODULE_PLATFORM_COMMON_HPP_
+#define ARCOS_PLATFORMS_ESP32_WROOM32S3_MODULE_PLATFORM_COMMON_HPP_
 
 // Platform-specific HAL implementations
 #include "lcd_parallel.hpp"
@@ -49,4 +50,4 @@ namespace PlatformCapabilities{
   constexpr int MAX_DMA_CHANNELS = 5;
 }
 
-#endif // PLATFORM_ESP32_S3_CONNECTOR_HPP_
+#endif // ARCOS_PLATFORMS_ESP32_WROOM32S3_MODULE_PLATFORM_COMMON_HPP_
