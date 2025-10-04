@@ -269,7 +269,7 @@ int value = 42;
 ### Header Guards
 
 - Use `#ifndef` / `#define` / `#endif`
-- Format: `ARCOS_CATEGORY_FILE_HPP_`
+- Format: `PROJECT_FOLDERPATH-FROM-PROJECT-ROOT_FILENAME_HPP_`
 
 ```cpp
 #ifndef ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_
