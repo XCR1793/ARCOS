@@ -39,9 +39,9 @@ struct BME280Config{
   uint8_t mode;               // 0=sleep, 1/2=forced, 3=normal
   
   // Default configuration: 1x oversampling, normal mode
-  BME280Config() 
-    : temp_oversampling(1), press_oversampling(1), 
-      hum_oversampling(1), mode(3) {}
+  BME280Config()
+    : temp_oversampling(1), press_oversampling(1),
+      hum_oversampling(1), mode(3){}
 };
 
 /** BME280 environmental sensor driver */

@@ -43,8 +43,8 @@ struct ICM20948Config{
   bool enable_magnetometer;  // true=initialize magnetometer (default)
   
   // Default configuration: ±4g accel, ±500dps gyro, magnetometer enabled
-  ICM20948Config() 
-    : accel_range(1), gyro_range(1), enable_magnetometer(true) {}
+  ICM20948Config()
+    : accel_range(1), gyro_range(1), enable_magnetometer(true){}
 };
 
 /** ICM20948 9-axis IMU driver */

@@ -13,7 +13,6 @@
 #define ARCOS_ABSTRACTION_DRIVERS_CORE_I2C_DEVICE_INTERFACE_HPP_
 
 #include "../../core/hal_interface_i2c.hpp"
-#include "driver_base.hpp"
 
 namespace arcos::abstraction::drivers{
 

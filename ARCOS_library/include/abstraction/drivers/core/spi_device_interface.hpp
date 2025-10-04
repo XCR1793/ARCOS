@@ -13,7 +13,6 @@
 #define ARCOS_ABSTRACTION_DRIVERS_CORE_SPI_DEVICE_INTERFACE_HPP_
 
 #include "../../core/hal_protocal_spi.hpp"
-#include "driver_base.hpp"
 
 namespace arcos::abstraction::drivers{
 

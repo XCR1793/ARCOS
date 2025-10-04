@@ -273,24 +273,24 @@ namespace arcos::abstraction{
      * @param state  True for HIGH, false for LOW
      * @note Runtime variant of FastWritePin()
      */
-  static inline void FastWritePin(uintptr_t pin, bool state){
-    if(pin > 48){
-      return;
-    }
-    if(state) {
-      if(pin < 32){
-        GPIO.out_w1ts = (1 << pin);
-      }else{
-        GPIO.out1_w1ts.data = (1 << (pin - 32));
+    static inline void FastWritePin(uintptr_t pin, bool state){
+      if(pin > 48){
+        return;
       }
-    }else{
-      if(pin < 32){
-        GPIO.out_w1tc = (1 << pin);
+      if(state) {
+        if(pin < 32){
+          GPIO.out_w1ts = (1 << pin);
+        }else{
+          GPIO.out1_w1ts.data = (1 << (pin - 32));
+        }
       }else{
-        GPIO.out1_w1tc.data = (1 << (pin - 32));
+        if(pin < 32){
+          GPIO.out_w1tc = (1 << pin);
+        }else{
+          GPIO.out1_w1tc.data = (1 << (pin - 32));
+        }
       }
     }
-  }
 
 
     /**
@@ -300,19 +300,23 @@ namespace arcos::abstraction{
      * @note Runtime variant of FastWritePinParallel()
      */
     static inline void FastWritePinParallel(uintptr_t pinMask, uintptr_t pinValues){
+      // Convert to 64-bit to handle both GPIO banks (0-31 and 32-48)
+      uint64_t mask64 = static_cast<uint64_t>(pinMask);
+      uint64_t values64 = static_cast<uint64_t>(pinValues);
+      
       // Lower bank (0-31)
-      uint32_t maskLow   = static_cast<uint32_t>(pinMask & 0xFFFFFFFFULL);
-      uint32_t valuesLow = static_cast<uint32_t>(pinValues & maskLow);
+      uint32_t maskLow   = static_cast<uint32_t>(mask64 & 0xFFFFFFFFULL);
+      uint32_t valuesLow = static_cast<uint32_t>(values64 & maskLow);
 
-      GPIO.out_w1tc = maskLow & ~valuesLow; // clear low pins
-      GPIO.out_w1ts = valuesLow;            // set low pins
+      GPIO.out_w1tc = maskLow & ~valuesLow; // Clear low pins
+      GPIO.out_w1ts = valuesLow;            // Set low pins
 
       // Upper bank (32-48)
-      uint32_t maskHigh   = static_cast<uint32_t>((pinMask >> 32) & 0xFFFFFFFFULL);
-      uint32_t valuesHigh = static_cast<uint32_t>((pinValues >> 32) & maskHigh);
+      uint32_t maskHigh   = static_cast<uint32_t>((mask64 >> 32) & 0xFFFFFFFFULL);
+      uint32_t valuesHigh = static_cast<uint32_t>((values64 >> 32) & maskHigh);
 
-      GPIO.out1_w1tc.data = maskHigh & ~valuesHigh;
-      GPIO.out1_w1ts.data = valuesHigh;
+      GPIO.out1_w1tc.data = maskHigh & ~valuesHigh; // Clear high pins
+      GPIO.out1_w1ts.data = valuesHigh;             // Set high pins
     }
 
     /**
