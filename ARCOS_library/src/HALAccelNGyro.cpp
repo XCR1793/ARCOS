@@ -15,8 +15,8 @@
 #include "esp_system.h"
 #include "nvs_flash.h"
 
-// ARCOS drivers
-#include "abstraction/hal.hpp"
+// ARCOS HAL and drivers
+#include "abstraction/hal.hpp"  // Includes ESP32S3_I2C and HAL_TIMER_DEFAULT
 #include "abstraction/drivers/components/BME280/driver_bme280.hpp"
 #include "abstraction/drivers/components/ICM20948/driver_icm20948.hpp"
 
@@ -36,20 +36,26 @@ extern "C" void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    // Initialize I2C HAL with default settings (SDA=9, SCL=10, 400kHz)
-    auto hal_result = HAL_I2C_DEFAULT::Initialize(0, 9, 10, 400000);
+    // Step 1: Initialize I2C HAL with custom pins (SDA=9, SCL=10, 400kHz)
+    // The HAL handles all low-level I2C operations
+    auto hal_result = ESP32S3_I2C::Initialize(0, 9, 10, 400000);
     if(hal_result != HalResult::Success){
         ESP_LOGE(TAG, "Failed to initialize I2C HAL");
         return;
     }
+    ESP_LOGI(TAG, "I2C HAL initialized successfully");
 
-    // Initialize sensors with bus ID 0
-    DRIVER_BME280 bme280(0x76, 0);  // BME280 at 0x76, bus 0
-    DRIVER_ICM20948 icm20948(0x68, 0);  // ICM20948 at 0x68, bus 0
+    // Step 2: Create sensor driver instances
+    // Simply specify device address and bus ID - drivers handle everything else!
+    DRIVER_BME280 bme280(0x76, 0);      // BME280 environmental sensor at address 0x76, bus 0
+    DRIVER_ICM20948 icm20948(0x68, 0);  // ICM20948 9-axis IMU at address 0x68, bus 0
     
+    // Step 3: Initialize sensors - they auto-configure with sensible defaults
+    // All the heavy lifting (calibration, register config, etc.) happens internally!
     bool bme_ok = bme280.initialize();
     bool icm_ok = icm20948.initialize();
     
+    // Step 4: Check initialization results
     if(bme_ok){
         ESP_LOGI(TAG, "✅ BME280 Environmental Sensor Ready");
     }else{
@@ -75,12 +81,13 @@ extern "C" void app_main(void)
     ESP_LOGI(TAG, "Starting sensor data stream...");
     vTaskDelay(pdMS_TO_TICKS(1000));
 
-    // Main sensor reading loop
+    // Step 5: Main sensor reading loop - just call readData()!
+    // The drivers handle all register reads, data parsing, and calibration
     while(true){
         BME280Data env_data;
         ICM20948Data imu_data;
         
-        // Read sensor data
+        // Simple API: just read the data structures
         bool env_success = bme_ok && bme280.readData(env_data);
         bool imu_success = icm_ok && icm20948.readData(imu_data);
         
@@ -107,3 +114,58 @@ extern "C" void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(1000)); // 1 second interval
     }
 }
+
+/*****************************************************************
+ * ADVANCED USAGE EXAMPLES
+ * 
+ * The drivers support optional configuration for power users who
+ * need custom sensor settings. Here are some examples:
+ * 
+ * EXAMPLE 1: High-precision environmental sensing
+ * -----------------------------------------------
+ * BME280Config high_precision;
+ * high_precision.temp_oversampling = 5;   // 16x oversampling
+ * high_precision.press_oversampling = 5;  // 16x oversampling
+ * high_precision.hum_oversampling = 5;    // 16x oversampling
+ * high_precision.mode = 3;                // Normal mode (continuous)
+ * 
+ * DRIVER_BME280 bme280(0x76, 0);
+ * bme280.initialize(high_precision);
+ * 
+ * 
+ * EXAMPLE 2: High-G accelerometer for impact detection
+ * ----------------------------------------------------
+ * ICM20948Config high_g;
+ * high_g.accel_range = 3;           // ±16g range
+ * high_g.gyro_range = 3;            // ±2000 dps range
+ * high_g.enable_magnetometer = false;  // Disable mag for faster sampling
+ * 
+ * DRIVER_ICM20948 icm20948(0x68, 0);
+ * icm20948.initialize(high_g);
+ * 
+ * 
+ * EXAMPLE 3: Low-power environmental monitoring
+ * ---------------------------------------------
+ * BME280Config low_power;
+ * low_power.temp_oversampling = 1;   // 1x oversampling (faster)
+ * low_power.press_oversampling = 1;
+ * low_power.hum_oversampling = 1;
+ * low_power.mode = 1;                // Forced mode (one-shot)
+ * 
+ * DRIVER_BME280 bme280(0x76, 0);
+ * bme280.initialize(low_power);
+ * 
+ * // In forced mode, trigger measurement manually:
+ * // ESP32S3_I2C::WriteRegister(0, 0x76, 0xF4, 0x25);
+ * 
+ * 
+ * KEY BENEFITS OF THIS DESIGN:
+ * ----------------------------
+ * ✅ No drivers.hpp needed - each driver is standalone
+ * ✅ Simple default initialization - just call initialize()
+ * ✅ Advanced configuration available when needed
+ * ✅ Clean API - all heavy lifting hidden in private methods
+ * ✅ Direct HAL usage - initialize I2C once, use anywhere
+ * ✅ Type-safe configuration structures
+ * 
+ *****************************************************************/

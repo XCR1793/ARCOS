@@ -26,10 +26,16 @@ inline DRIVER_ICM20948::DRIVER_ICM20948(uint8_t address, uint8_t bus_id)
 
 inline bool DRIVER_ICM20948::selectBank(uint8_t bank){
   uint8_t bank_sel = (bank << 4) & 0x30;
-  return HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_BANK_SEL, bank_sel) == HalResult::Success;
+  return ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_BANK_SEL, bank_sel) == HalResult::Success;
 }
 
 inline bool DRIVER_ICM20948::initialize(){
+  // Use default configuration
+  ICM20948Config default_config;
+  return initialize(default_config);
+}
+
+inline bool DRIVER_ICM20948::initialize(const ICM20948Config& config){
   // Select bank 0
   if(!selectBank(0)){
     return false;
@@ -37,7 +43,7 @@ inline bool DRIVER_ICM20948::initialize(){
   
   // Check WHO_AM_I
   uint8_t who_am_i = 0;
-  if(HAL_I2C_DEFAULT::ReadRegister(bus_id_, address_, REG_WHO_AM_I, &who_am_i) != HalResult::Success){
+  if(ESP32S3_I2C::ReadRegister(bus_id_, address_, REG_WHO_AM_I, &who_am_i) != HalResult::Success){
     return false;
   }
   
@@ -45,47 +51,49 @@ inline bool DRIVER_ICM20948::initialize(){
     return false;
   }
   
-  // Initialize accel/gyro
-  if(!initializeAccelGyro()){
-    return false;
-  }
-  
-  // Initialize magnetometer (best effort)
-  mag_initialized_ = initializeMagnetometer();
-  
-  initialized_ = true;
-  return true;
-}
-
-inline bool DRIVER_ICM20948::initializeAccelGyro(){
-  // Reset device (Bank 0)
+  // Reset device
   selectBank(0);
   uint8_t reset = 0x80;
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_PWR_MGMT_1, reset);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_PWR_MGMT_1, reset);
   HAL_TIMER_DEFAULT::Delay(100);
   
   // Wake up device
-  uint8_t pwr_mgmt = 0x01;  // Auto select best clock
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_PWR_MGMT_1, pwr_mgmt);
+  uint8_t pwr_mgmt = 0x01;
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_PWR_MGMT_1, pwr_mgmt);
   HAL_TIMER_DEFAULT::Delay(10);
   
   // Enable accel and gyro
-  uint8_t pwr_mgmt_2 = 0x00;  // Enable all sensors
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_PWR_MGMT_2, pwr_mgmt_2);
+  uint8_t pwr_mgmt_2 = 0x00;
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_PWR_MGMT_2, pwr_mgmt_2);
   HAL_TIMER_DEFAULT::Delay(10);
   
-  // Configure accelerometer (Bank 2)
+  // Configure accelerometer with custom range
   selectBank(2);
-  uint8_t accel_config = 0x01;  // ±4g, DLPF enabled
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_ACCEL_CONFIG, accel_config);
-  accel_scale_ = 4.0f / 32768.0f;  // ±4g range
+  uint8_t accel_config = (config.accel_range & 0x03) << 1 | 0x01;  // Range + DLPF
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_ACCEL_CONFIG, accel_config);
   
-  // Configure gyroscope (Bank 2)
-  uint8_t gyro_config = 0x01;  // ±500 dps, DLPF enabled
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_GYRO_CONFIG_1, gyro_config);
-  gyro_scale_ = 500.0f / 32768.0f;  // ±500 dps range
+  // Set accel scale based on range
+  float accel_ranges[] = {2.0f, 4.0f, 8.0f, 16.0f};
+  accel_scale_ = accel_ranges[config.accel_range & 0x03] / 32768.0f;
+  
+  // Configure gyroscope with custom range
+  uint8_t gyro_config = (config.gyro_range & 0x03) << 1 | 0x01;  // Range + DLPF
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_GYRO_CONFIG_1, gyro_config);
+  
+  // Set gyro scale based on range
+  float gyro_ranges[] = {250.0f, 500.0f, 1000.0f, 2000.0f};
+  gyro_scale_ = gyro_ranges[config.gyro_range & 0x03] / 32768.0f;
   
   selectBank(0);
+  
+  // Initialize magnetometer if requested (best effort)
+  if(config.enable_magnetometer){
+    mag_initialized_ = initializeMagnetometer();
+  }else{
+    mag_initialized_ = false;
+  }
+  
+  initialized_ = true;
   return true;
 }
 
@@ -97,7 +105,7 @@ inline bool DRIVER_ICM20948::initializeMagnetometer(){
   
   // Enable ODR alignment (Bank 2)
   selectBank(2);
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_ODR_ALIGN_EN, 0x01);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_ODR_ALIGN_EN, 0x01);
   
   // Try up to 10 times to initialize magnetometer
   bool init_success = false;
@@ -106,33 +114,33 @@ inline bool DRIVER_ICM20948::initializeMagnetometer(){
     
     // Enable I2C master mode (Bank 0)
     selectBank(0);
-    HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_USER_CTRL, 0x20);
+    ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_USER_CTRL, 0x20);
     HAL_TIMER_DEFAULT::Delay(10);
     
     // Configure I2C master (Bank 3)
     selectBank(3);
-    HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_MST_CTRL, 0x07);
+    ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_MST_CTRL, 0x07);
     HAL_TIMER_DEFAULT::Delay(10);
     
     // Read magnetometer WHO_AM_I via SLV4
     selectBank(3);
     
     // Read WIA_1 (0x00)
-    HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV4_ADDR, MAG_I2C_ADDR | 0x80);
-    HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV4_REG, 0x00);
-    HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV4_CTRL, I2C_SLVX_EN);
+    ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV4_ADDR, MAG_I2C_ADDR | 0x80);
+    ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV4_REG, 0x00);
+    ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV4_CTRL, I2C_SLVX_EN);
     
     // Wait for transaction to complete
     HAL_TIMER_DEFAULT::Delay(10);
     uint8_t wia1 = 0;
-    HAL_I2C_DEFAULT::ReadRegister(bus_id_, address_, REG_I2C_SLV4_DI, &wia1);
+    ESP32S3_I2C::ReadRegister(bus_id_, address_, REG_I2C_SLV4_DI, &wia1);
     
     // Read WIA_2 (0x01)
-    HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV4_REG, 0x01);
-    HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV4_CTRL, I2C_SLVX_EN);
+    ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV4_REG, 0x01);
+    ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV4_CTRL, I2C_SLVX_EN);
     HAL_TIMER_DEFAULT::Delay(10);
     uint8_t wia2 = 0;
-    HAL_I2C_DEFAULT::ReadRegister(bus_id_, address_, REG_I2C_SLV4_DI, &wia2);
+    ESP32S3_I2C::ReadRegister(bus_id_, address_, REG_I2C_SLV4_DI, &wia2);
     
     uint16_t who_am_i = (wia1 << 8) | wia2;
     
@@ -142,9 +150,9 @@ inline bool DRIVER_ICM20948::initializeMagnetometer(){
       // Reset I2C master and try again
       selectBank(0);
       uint8_t user_ctrl = 0;
-      HAL_I2C_DEFAULT::ReadRegister(bus_id_, address_, REG_USER_CTRL, &user_ctrl);
+      ESP32S3_I2C::ReadRegister(bus_id_, address_, REG_USER_CTRL, &user_ctrl);
       user_ctrl |= I2C_MST_RST;
-      HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_USER_CTRL, user_ctrl);
+      ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_USER_CTRL, user_ctrl);
       HAL_TIMER_DEFAULT::Delay(10);
     }
   }
@@ -155,22 +163,22 @@ inline bool DRIVER_ICM20948::initializeMagnetometer(){
   
   // Reset magnetometer (CNTL3 = 0x01)
   selectBank(3);
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV4_ADDR, MAG_I2C_ADDR);
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV4_REG, MAG_REG_CNTL3);
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV4_DO, 0x01);
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV4_CTRL, I2C_SLVX_EN);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV4_ADDR, MAG_I2C_ADDR);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV4_REG, MAG_REG_CNTL3);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV4_DO, 0x01);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV4_CTRL, I2C_SLVX_EN);
   HAL_TIMER_DEFAULT::Delay(100);
   
   // Set magnetometer to continuous mode 100Hz (CNTL2 = 0x08)
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV4_REG, MAG_REG_CNTL2);
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV4_DO, 0x08);
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV4_CTRL, I2C_SLVX_EN);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV4_REG, MAG_REG_CNTL2);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV4_DO, 0x08);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV4_CTRL, I2C_SLVX_EN);
   HAL_TIMER_DEFAULT::Delay(10);
   
   // Configure slave 0 to continuously read 8 bytes from magnetometer
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV0_ADDR, MAG_I2C_ADDR | 0x80);
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV0_REG, MAG_REG_HXL);
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_I2C_SLV0_CTRL, I2C_SLVX_EN | 0x08);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV0_ADDR, MAG_I2C_ADDR | 0x80);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV0_REG, MAG_REG_HXL);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_I2C_SLV0_CTRL, I2C_SLVX_EN | 0x08);
   HAL_TIMER_DEFAULT::Delay(10);
   
   selectBank(0);
@@ -186,7 +194,7 @@ inline bool DRIVER_ICM20948::readData(ICM20948Data& data){
   
   // Read accelerometer
   uint8_t accel_data[6];
-  if(HAL_I2C_DEFAULT::ReadRegisterBuffer(bus_id_, address_, REG_ACCEL_XOUT_H, accel_data, 6) != HalResult::Success){
+  if(ESP32S3_I2C::ReadRegisterBuffer(bus_id_, address_, REG_ACCEL_XOUT_H, accel_data, 6) != HalResult::Success){
     return false;
   }
   
@@ -200,7 +208,7 @@ inline bool DRIVER_ICM20948::readData(ICM20948Data& data){
   
   // Read gyroscope
   uint8_t gyro_data[6];
-  if(HAL_I2C_DEFAULT::ReadRegisterBuffer(bus_id_, address_, REG_GYRO_XOUT_H, gyro_data, 6) != HalResult::Success){
+  if(ESP32S3_I2C::ReadRegisterBuffer(bus_id_, address_, REG_GYRO_XOUT_H, gyro_data, 6) != HalResult::Success){
     return false;
   }
   
@@ -215,7 +223,7 @@ inline bool DRIVER_ICM20948::readData(ICM20948Data& data){
   // Read magnetometer if available
   if(mag_initialized_){
     uint8_t mag_data[8];
-    if(HAL_I2C_DEFAULT::ReadRegisterBuffer(bus_id_, address_, REG_EXT_SLV_SENS_DATA_00, mag_data, 8) == HalResult::Success){
+    if(ESP32S3_I2C::ReadRegisterBuffer(bus_id_, address_, REG_EXT_SLV_SENS_DATA_00, mag_data, 8) == HalResult::Success){
       int16_t mag_x_raw = (int16_t)((mag_data[1] << 8) | mag_data[0]);
       int16_t mag_y_raw = (int16_t)((mag_data[3] << 8) | mag_data[2]);
       int16_t mag_z_raw = (int16_t)((mag_data[5] << 8) | mag_data[4]);
@@ -269,7 +277,7 @@ inline bool DRIVER_ICM20948::readMagnetometer(float& x, float& y, float& z){
 inline bool DRIVER_ICM20948::isConnected(){
   selectBank(0);
   uint8_t who_am_i = 0;
-  return HAL_I2C_DEFAULT::ReadRegister(bus_id_, address_, REG_WHO_AM_I, &who_am_i) == HalResult::Success 
+  return ESP32S3_I2C::ReadRegister(bus_id_, address_, REG_WHO_AM_I, &who_am_i) == HalResult::Success 
          && who_am_i == CHIP_ID;
 }
 

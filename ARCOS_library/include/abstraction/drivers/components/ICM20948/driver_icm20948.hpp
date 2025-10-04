@@ -14,6 +14,9 @@
 
 #include "abstraction/hal.hpp"
 
+// Include platform-specific I2C HAL implementation
+// ESP32S3_I2C is defined in the platform hal_connector.hpp (included via hal.hpp)
+
 namespace arcos{
 namespace abstraction{
 
@@ -27,6 +30,21 @@ struct ICM20948Data{
   
   // Magnetometer (μT)
   float mag_x, mag_y, mag_z;
+};
+
+/** ICM20948 configuration structure (optional)
+ * 
+ * Allows customization of sensor ranges during initialization.
+ * If not provided, sensible defaults are used automatically.
+ */
+struct ICM20948Config{
+  uint8_t accel_range;  // 0=±2g, 1=±4g, 2=±8g, 3=±16g
+  uint8_t gyro_range;   // 0=±250dps, 1=±500dps, 2=±1000dps, 3=±2000dps
+  bool enable_magnetometer;  // true=initialize magnetometer (default)
+  
+  // Default configuration: ±4g accel, ±500dps gyro, magnetometer enabled
+  ICM20948Config() 
+    : accel_range(1), gyro_range(1), enable_magnetometer(true) {}
 };
 
 /** ICM20948 9-axis IMU driver */
@@ -90,11 +108,6 @@ private:
    */
   bool selectBank(uint8_t bank);
   
-  /** Initialize accelerometer and gyroscope
-   * @return true if successful
-   */
-  bool initializeAccelGyro();
-  
   /** Initialize magnetometer via I2C master
    * @return true if successful
    */
@@ -112,6 +125,13 @@ public:
    * @return true if initialization successful
    */
   bool initialize();
+
+  /** Initialize the sensor with custom configuration
+   * Allows fine-grained control over sensor ranges
+   * @param config Custom configuration settings
+   * @return true if initialization successful
+   */
+  bool initialize(const ICM20948Config& config);
 
   /** Check if sensor is initialized and responding
    * @return true if initialized

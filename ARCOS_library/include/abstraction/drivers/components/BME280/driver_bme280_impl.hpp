@@ -22,9 +22,15 @@ inline DRIVER_BME280::DRIVER_BME280(uint8_t address, uint8_t bus_id)
 }
 
 inline bool DRIVER_BME280::initialize(){
+  // Use default configuration
+  BME280Config default_config;
+  return initialize(default_config);
+}
+
+inline bool DRIVER_BME280::initialize(const BME280Config& config){
   // Check chip ID
   uint8_t chip_id = 0;
-  if(HAL_I2C_DEFAULT::ReadRegister(bus_id_, address_, REG_CHIP_ID, &chip_id) != HalResult::Success){
+  if(ESP32S3_I2C::ReadRegister(bus_id_, address_, REG_CHIP_ID, &chip_id) != HalResult::Success){
     return false;
   }
   
@@ -34,7 +40,7 @@ inline bool DRIVER_BME280::initialize(){
   
   // Soft reset
   uint8_t reset_cmd = 0xB6;
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, 0xE0, reset_cmd);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, 0xE0, reset_cmd);
   HAL_TIMER_DEFAULT::Delay(10);
   
   // Read calibration data
@@ -42,14 +48,16 @@ inline bool DRIVER_BME280::initialize(){
     return false;
   }
   
-  // Configure sensor
-  // Humidity oversampling x1
-  uint8_t ctrl_hum = 0x01;
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_CTRL_HUM, ctrl_hum);
+  // Configure sensor with provided settings
+  // Humidity oversampling (must be written first)
+  uint8_t ctrl_hum = config.hum_oversampling & 0x07;
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_CTRL_HUM, ctrl_hum);
   
-  // Temperature and pressure oversampling x1, normal mode
-  uint8_t ctrl_meas = 0x27;  // osrs_t=1, osrs_p=1, mode=normal
-  HAL_I2C_DEFAULT::WriteRegister(bus_id_, address_, REG_CTRL_MEAS, ctrl_meas);
+  // Temperature and pressure oversampling + mode
+  uint8_t ctrl_meas = ((config.temp_oversampling & 0x07) << 5) | 
+                      ((config.press_oversampling & 0x07) << 2) | 
+                      (config.mode & 0x03);
+  ESP32S3_I2C::WriteRegister(bus_id_, address_, REG_CTRL_MEAS, ctrl_meas);
   
   HAL_TIMER_DEFAULT::Delay(100);
   
@@ -61,7 +69,7 @@ inline bool DRIVER_BME280::readCalibrationData(){
   uint8_t calib_data[26];
   
   // Read temperature and pressure calibration (0x88-0xA1)
-  if(HAL_I2C_DEFAULT::ReadRegisterBuffer(bus_id_, address_, REG_CALIB_00, calib_data, 26) != HalResult::Success){
+  if(ESP32S3_I2C::ReadRegisterBuffer(bus_id_, address_, REG_CALIB_00, calib_data, 26) != HalResult::Success){
     return false;
   }
   
@@ -81,7 +89,7 @@ inline bool DRIVER_BME280::readCalibrationData(){
   
   // Read humidity calibration (0xE1-0xE7)
   uint8_t hum_calib[7];
-  if(HAL_I2C_DEFAULT::ReadRegisterBuffer(bus_id_, address_, REG_CALIB_26, hum_calib, 7) != HalResult::Success){
+  if(ESP32S3_I2C::ReadRegisterBuffer(bus_id_, address_, REG_CALIB_26, hum_calib, 7) != HalResult::Success){
     return false;
   }
   
@@ -101,7 +109,7 @@ inline bool DRIVER_BME280::readData(BME280Data& data){
   
   // Read all sensor data (0xF7-0xFE)
   uint8_t raw_data[8];
-  if(HAL_I2C_DEFAULT::ReadRegisterBuffer(bus_id_, address_, REG_PRESS_MSB, raw_data, 8) != HalResult::Success){
+  if(ESP32S3_I2C::ReadRegisterBuffer(bus_id_, address_, REG_PRESS_MSB, raw_data, 8) != HalResult::Success){
     return false;
   }
   
@@ -189,7 +197,7 @@ inline bool DRIVER_BME280::readPressure(float& pressure){
 
 inline bool DRIVER_BME280::isConnected(){
   uint8_t chip_id = 0;
-  return HAL_I2C_DEFAULT::ReadRegister(bus_id_, address_, REG_CHIP_ID, &chip_id) == HalResult::Success 
+  return ESP32S3_I2C::ReadRegister(bus_id_, address_, REG_CHIP_ID, &chip_id) == HalResult::Success 
          && chip_id == CHIP_ID;
 }
 

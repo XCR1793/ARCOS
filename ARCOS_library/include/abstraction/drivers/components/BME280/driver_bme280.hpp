@@ -14,6 +14,9 @@
 
 #include "abstraction/hal.hpp"
 
+// Include platform-specific I2C HAL implementation
+// ESP32S3_I2C is defined in the platform hal_connector.hpp (included via hal.hpp)
+
 namespace arcos{
 namespace abstraction{
 
@@ -22,6 +25,23 @@ struct BME280Data{
   float temperature;  // °C
   float humidity;     // %
   float pressure;     // Pa
+};
+
+/** BME280 configuration structure (optional)
+ * 
+ * Allows customization of sensor settings during initialization.
+ * If not provided, sensible defaults are used automatically.
+ */
+struct BME280Config{
+  uint8_t temp_oversampling;  // 0=skip, 1=x1, 2=x2, 3=x4, 4=x8, 5=x16
+  uint8_t press_oversampling; // 0=skip, 1=x1, 2=x2, 3=x4, 4=x8, 5=x16
+  uint8_t hum_oversampling;   // 0=skip, 1=x1, 2=x2, 3=x4, 4=x8, 5=x16
+  uint8_t mode;               // 0=sleep, 1/2=forced, 3=normal
+  
+  // Default configuration: 1x oversampling, normal mode
+  BME280Config() 
+    : temp_oversampling(1), press_oversampling(1), 
+      hum_oversampling(1), mode(3) {}
 };
 
 /** BME280 environmental sensor driver */
@@ -86,10 +106,17 @@ public:
   DRIVER_BME280(uint8_t address = DEFAULT_ADDRESS, uint8_t bus_id = 0);
 
   /** Initialize the sensor with default configuration
-   * Automatically reads calibration data
+   * Automatically reads calibration data and configures sensor
    * @return true if initialization successful
    */
   bool initialize();
+
+  /** Initialize the sensor with custom configuration
+   * Allows fine-grained control over sensor settings
+   * @param config Custom configuration settings
+   * @return true if initialization successful
+   */
+  bool initialize(const BME280Config& config);
 
   /** Check if sensor is initialized and responding
    * @return true if initialized
