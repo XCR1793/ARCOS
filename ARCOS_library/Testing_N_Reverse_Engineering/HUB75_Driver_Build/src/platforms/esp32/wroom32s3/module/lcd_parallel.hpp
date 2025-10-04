@@ -1,8 +1,18 @@
-#pragma once
+/*****************************************************************
+ * File:      lcd_parallel.hpp
+ * Category:  abstraction/platforms/esp32/wroom32s3/module
+ * Author:    XCR1793 (Feather Forge)
+ * 
+ * Purpose:
+ *    LCD_CAM peripheral implementation for ESP32-S3 parallel output
+ *    with DMA support for high-speed GPIO pattern generation.
+ *****************************************************************/
+
+#ifndef ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_LCD_PARALLEL_HPP_
+#define ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_LCD_PARALLEL_HPP_
 
 #include <cstdint>
 #include <cstddef>
-#include "../../../../core/platform_hal.hpp"
 #include "../../../../core/hal_protocal_parallel.hpp"
 
 namespace arcos::abstraction{
@@ -152,12 +162,11 @@ private:
   ParallelHardwareConfig hw_config;  // Config for interface compliance
   uint16_t* buffer;
   size_t buffer_len;
-  
-  /** Platform HAL reference */
-  IPlatformHAL* platform;
 };
 
 } // namespace arcos::abstraction
 
 // Include implementation
 #include "lcd_parallel_impl.hpp"
+
+#endif // ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_LCD_PARALLEL_HPP_

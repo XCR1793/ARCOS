@@ -1,8 +1,11 @@
 /*****************************************************************
  * File:      hal_protocal_parallel.hpp
  * Category:  abstraction/core
+ * Author:    XCR1793 (Feather Forge)
  * 
- * Purpose:    Parallel hardware protocol abstraction interface
+ * Purpose:
+ *    Parallel hardware protocol abstraction interface providing
+ *    common operations for parallel output peripherals.
  *****************************************************************/
 
 #ifndef ARCOS_ABSTRACTION_CORE_HAL_PROTOCAL_PARALLEL_HPP_
@@ -10,10 +13,16 @@
 
 #include <cstdint>
 #include <cstddef>
-#include "platform_hal.hpp"
 
 namespace arcos::abstraction{
-  namespace parallel{
+
+/** Platform-independent pin identifier */
+typedef int32_t PinNumber;
+
+/** Special pin value indicating "not connected" */
+constexpr PinNumber PIN_NC = -1;
+
+namespace parallel{
 
 /**
  * @brief Configuration structure for parallel hardware interface

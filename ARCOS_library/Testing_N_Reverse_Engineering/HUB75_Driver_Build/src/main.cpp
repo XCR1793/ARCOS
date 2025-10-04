@@ -1,3 +1,13 @@
+/*****************************************************************
+ * File:      main.cpp
+ * Category:  application
+ * Author:    XCR1793 (Feather Forge)
+ * 
+ * Purpose:
+ *    HSL color cycling demo application for HUB75 LED matrix
+ *    displays demonstrating the ARCOS abstraction framework.
+ *****************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,9 +19,9 @@
 #include "esp_timer.h"
 #include "esp_task_wdt.h"
 
-// ARCOS-style abstraction - only 2 includes needed!
+// ARCOS-style abstraction
 #include "hal.hpp"       // All HAL APIs + platform implementation
-#include "drivers.hpp"   // All device drivers
+#include "drivers/communication/HUB75/driver_hub75.hpp"      // HUB75 display driver
 #include "drivers/communication/HUB75/driver_hub75_i2s.hpp"  // I2S protocol for HUB75
 
 using namespace arcos::abstraction;

@@ -1,8 +1,11 @@
 /*****************************************************************
  * File:      driver_hub75_i2s.hpp
  * Category:  abstraction/drivers/communication/HUB75
+ * Author:    XCR1793 (Feather Forge)
  * 
- * Purpose:    I2S protocol implementation for HUB75 display
+ * Purpose:
+ *    I2S protocol implementation for HUB75 display using parallel
+ *    hardware interface with DMA buffer management.
  *****************************************************************/
 
 #ifndef ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_I2S_HPP_
@@ -12,7 +15,6 @@
 #include "driver_hub75.hpp"
 #include "../../../core/hal_protocal_parallel.hpp"
 #include "../../../core/hal_protocal_dma.hpp"
-#include "../../../core/platform_hal.hpp"
 
 namespace arcos::abstraction::drivers{
 
@@ -71,9 +73,6 @@ private:
   HUB75Config config;
   int buffer_size;
   
-  /** Platform HAL reference */
-  IPlatformHAL* platform;
-  
   /** State */
   bool initialized;
   bool running;
@@ -86,3 +85,4 @@ private:
 #include "driver_hub75_i2s_impl.hpp"
 
 #endif // ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_I2S_HPP_
+

@@ -1,14 +1,18 @@
 /*****************************************************************
  * File:      driver_hub75.hpp
  * Category:  abstraction/drivers/communication/HUB75
+ * Author:    XCR1793 (Feather Forge)
  * 
- * Purpose:    HUB75 LED matrix display driver abstraction
-*****************************************************************/#ifndef ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_
+ * Purpose:
+ *    HUB75 LED matrix display driver abstraction with protocol
+ *    layer separation for modular hardware backend support.
+ *****************************************************************/
+
+#ifndef ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_
 #define ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_HPP_
 
 #include <stdint.h>
 #include <cstddef>
-#include "../../../core/platform_hal.hpp"
 #include "driver_hub75_protocol.hpp"
 
 namespace arcos::abstraction::drivers{
@@ -210,9 +214,6 @@ private:
   
   /** NOTE: Driver does NOT own injected protocol
    *  Application is responsible for lifecycle management */
-  
-  /** Platform HAL reference */
-  IPlatformHAL* platform;
   
   /** Configuration and state */
   HUB75Config config;

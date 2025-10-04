@@ -5,9 +5,10 @@
  * 
  * Purpose:    HUB75 LED matrix display driver implementation
  *****************************************************************/#include "driver_hub75.hpp"
-#include "../../../core/platform_hal.hpp"
 #include <cstring>
 #include <cmath>
+#include "esp_log.h"
+#include "esp_heap_caps.h"
 
 namespace arcos::abstraction::drivers{
 
@@ -17,7 +18,6 @@ constexpr const char* HUB75_DRIVER_TAG = "HUB75_DRIVER";
 
 HUB75Driver::HUB75Driver()
   : protocol(nullptr)
-  , platform(getPlatformHAL())
   , initialized(false)
   , running(false)
   , framebuffer(nullptr)
@@ -32,8 +32,8 @@ HUB75Driver::HUB75Driver()
 
 HUB75Driver::~HUB75Driver(){
   stop();
-  if(framebuffer && platform){
-    platform->freeMemory(framebuffer);
+  if(framebuffer){
+    heap_caps_free(framebuffer);
   }
   
   // NOTE: Driver does NOT own protocol
@@ -76,13 +76,13 @@ int HUB75Driver::calculateBufferSize(const HUB75Config& config){
 
 bool HUB75Driver::init(const HUB75Config& cfg, IHUB75Protocol* proto){
   if(initialized){
-    PLATFORM_LOG_W(HUB75_DRIVER_TAG, "Driver already initialised");
+    ESP_LOGW(HUB75_DRIVER_TAG, "Driver already initialised");
     return true;
   }
   
   // Driver REQUIRES protocol to be injected by application
   if(!proto){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Protocol implementation must be provided (cannot be null)");
+    ESP_LOGE(HUB75_DRIVER_TAG, "Protocol implementation must be provided (cannot be null)");
     return false;
   }
   
@@ -144,9 +144,9 @@ bool HUB75Driver::init(const HUB75Config& cfg, IHUB75Protocol* proto){
   /** Allocate framebuffer */
   int fb_width = config.dual_display_mode ? config.effective_width : config.matrix_width;
   size_t framebuffer_bytes = fb_width * config.matrix_height * sizeof(RGBPixel);
-  framebuffer = static_cast<RGBPixel*>(platform->allocateMemory(framebuffer_bytes, MEM_CAP_DEFAULT));
+  framebuffer = static_cast<RGBPixel*>(heap_caps_malloc(framebuffer_bytes, MALLOC_CAP_8BIT));
   if(!framebuffer){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Failed to allocate framebuffer (%d bytes)", framebuffer_bytes);
+    ESP_LOGE(HUB75_DRIVER_TAG, "Failed to allocate framebuffer (%d bytes)", framebuffer_bytes);
     return false;
   }
   
@@ -158,24 +158,24 @@ bool HUB75Driver::init(const HUB75Config& cfg, IHUB75Protocol* proto){
   
   initialized = true;
   
-  PLATFORM_LOG_I(HUB75_DRIVER_TAG, "HUB75 driver initialised:");
-  PLATFORM_LOG_I(HUB75_DRIVER_TAG, "  Protocol backend: %s", protocol->getBackendName());
-  PLATFORM_LOG_I(HUB75_DRIVER_TAG, "  Matrix: %dx%d pixels", config.matrix_width, config.matrix_height);
-  PLATFORM_LOG_I(HUB75_DRIVER_TAG, "  Colour depth: %d-bit (%d planes)", config.colour_depth, config.colour_depth);
-  PLATFORM_LOG_I(HUB75_DRIVER_TAG, "  Clock: %dMHz", config.clock_freq_hz / 1000000);
-  PLATFORM_LOG_I(HUB75_DRIVER_TAG, "  Buffer size: %d samples", buffer_size);
+  ESP_LOGI(HUB75_DRIVER_TAG, "HUB75 driver initialised:");
+  ESP_LOGI(HUB75_DRIVER_TAG, "  Protocol backend: %s", protocol->getBackendName());
+  ESP_LOGI(HUB75_DRIVER_TAG, "  Matrix: %dx%d pixels", config.matrix_width, config.matrix_height);
+  ESP_LOGI(HUB75_DRIVER_TAG, "  Colour depth: %d-bit (%d planes)", config.colour_depth, config.colour_depth);
+  ESP_LOGI(HUB75_DRIVER_TAG, "  Clock: %dMHz", config.clock_freq_hz / 1000000);
+  ESP_LOGI(HUB75_DRIVER_TAG, "  Buffer size: %d samples", buffer_size);
   
   return true;
 }
 
 bool HUB75Driver::start(){
   if(!initialized){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Driver not initialised");
+    ESP_LOGE(HUB75_DRIVER_TAG, "Driver not initialised");
     return false;
   }
   
   if(running){
-    PLATFORM_LOG_W(HUB75_DRIVER_TAG, "Driver already running");
+    ESP_LOGW(HUB75_DRIVER_TAG, "Driver already running");
     return true;
   }
   
@@ -184,25 +184,25 @@ bool HUB75Driver::start(){
   
   /** Debug: Check backBuffer after conversion */
   uint16_t* backBuf = protocol->getWritableBuffer();
-  PLATFORM_LOG_I(HUB75_DRIVER_TAG, "DEBUG: backBuffer first 10 samples: %04X %04X %04X %04X %04X %04X %04X %04X %04X %04X",
+  ESP_LOGI(HUB75_DRIVER_TAG, "DEBUG: backBuffer first 10 samples: %04X %04X %04X %04X %04X %04X %04X %04X %04X %04X",
                 backBuf[0], backBuf[1], backBuf[2], backBuf[3], backBuf[4],
                 backBuf[5], backBuf[6], backBuf[7], backBuf[8], backBuf[9]);
   
   /** Start protocol first - this calls setDirectBuffer() to initialize hardware buffer size */
   if(!protocol->start()){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Failed to start protocol transmission");
+    ESP_LOGE(HUB75_DRIVER_TAG, "Failed to start protocol transmission");
     return false;
   }
   
   /** Now swap protocol buffers to make the filled buffer active */
   if(!protocol->swapBuffer(nullptr, 0)){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Failed to swap protocol buffers");
+    ESP_LOGE(HUB75_DRIVER_TAG, "Failed to swap protocol buffers");
     return false;
   }
   
   running = true;
   
-  PLATFORM_LOG_I(HUB75_DRIVER_TAG, "HUB75 transmission started");
+  ESP_LOGI(HUB75_DRIVER_TAG, "HUB75 transmission started");
   return true;
 }
 
@@ -210,7 +210,7 @@ void HUB75Driver::stop(){
   if(running && protocol){
     protocol->stop();
     running = false;
-    PLATFORM_LOG_I(HUB75_DRIVER_TAG, "HUB75 transmission stopped");
+    ESP_LOGI(HUB75_DRIVER_TAG, "HUB75 transmission stopped");
   }
 }
 
@@ -272,7 +272,7 @@ void HUB75Driver::show(){
   
   /** Swap protocol buffers to present the updated frame */
   if(!protocol->swapBuffer(nullptr, 0)){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Failed to swap buffer in protocol");
+    ESP_LOGE(HUB75_DRIVER_TAG, "Failed to swap buffer in protocol");
   }
   
   /** Track brightness for next frame */
@@ -303,7 +303,7 @@ void HUB75Driver::convertFramebufferToHUB75(){
   /** Get writable buffer from protocol */
   uint16_t* targetBuffer = protocol->getWritableBuffer();
   if(!targetBuffer){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Failed to get writable buffer from protocol");
+    ESP_LOGE(HUB75_DRIVER_TAG, "Failed to get writable buffer from protocol");
     return;
   }
   
@@ -331,7 +331,7 @@ void HUB75Driver::convertFramebufferToHUB75(){
     int data_row = (sequence_index + 1) % hub75_rows;
     
     int upper_row = data_row;
-    int lower_row = data_row + hub75_rows;
+    // int lower_row = data_row + hub75_rows;  // Unused for now
     
     /** Go through all color buffers for this row */
     for(int plane = 0; plane < config.colour_depth; plane++){
@@ -627,12 +627,12 @@ FrameBuffer HUB75Driver::getFrameBuffer() const{
 
 bool HUB75Driver::setFrameBuffer(const FrameBuffer& buffer){
   if(!validateConfig(config) || !isValidBufferSize(buffer.width, buffer.height)){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Invalid buffer dimensions: %dx%d", buffer.width, buffer.height);
+    ESP_LOGE(HUB75_DRIVER_TAG, "Invalid buffer dimensions: %dx%d", buffer.width, buffer.height);
     return false;
   }
   
   if(buffer.format != FrameBuffer::RGB888){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Unsupported buffer format");
+    ESP_LOGE(HUB75_DRIVER_TAG, "Unsupported buffer format");
     return false;
   }
   
@@ -649,7 +649,7 @@ bool HUB75Driver::setFrameBuffer(const FrameBuffer& buffer){
 
 bool HUB75Driver::uploadFrameBuffer(const RGB* pixels, int width, int height){
   if(!pixels || !isValidBufferSize(width, height)){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Invalid buffer parameters");
+    ESP_LOGE(HUB75_DRIVER_TAG, "Invalid buffer parameters");
     return false;
   }
   
@@ -666,7 +666,7 @@ bool HUB75Driver::uploadFrameBuffer(const RGB* pixels, int width, int height){
 
 void HUB75Driver::copyFrameBuffer(RGB* destination) const{
   if(!destination || !framebuffer){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Invalid destination buffer");
+    ESP_LOGE(HUB75_DRIVER_TAG, "Invalid destination buffer");
     return;
   }
   
@@ -681,12 +681,12 @@ void HUB75Driver::copyFrameBuffer(RGB* destination) const{
 /** Configuration management */
 bool HUB75Driver::updateConfig(const HUB75Config& newConfig){
   if(!validateConfig(newConfig)){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Invalid configuration");
+    ESP_LOGE(HUB75_DRIVER_TAG, "Invalid configuration");
     return false;
   }
   
   if(initialized){
-    PLATFORM_LOG_W(HUB75_DRIVER_TAG, "Updating config on initialised driver - restart required");
+    ESP_LOGW(HUB75_DRIVER_TAG, "Updating config on initialised driver - restart required");
   }
   
   applyConfig(newConfig);
@@ -715,40 +715,40 @@ void HUB75Driver::updateGammaTable(float gamma){
   /** Fast copy from compile-time optimised gamma tables - no pow() calculations */
   if(gamma >= 2.5f){
     memcpy(gamma_table, GAMMA_TABLE_26, sizeof(gamma_table));
-    PLATFORM_LOG_I(HUB75_DRIVER_TAG, "Updated to optimised gamma table (γ=2.6)");
+    ESP_LOGI(HUB75_DRIVER_TAG, "Updated to optimised gamma table (γ=2.6)");
   } else if(gamma >= 2.0f){
     memcpy(gamma_table, GAMMA_TABLE_22, sizeof(gamma_table));
-    PLATFORM_LOG_I(HUB75_DRIVER_TAG, "Updated to optimised gamma table (γ=2.2)");  
+    ESP_LOGI(HUB75_DRIVER_TAG, "Updated to optimised gamma table (γ=2.2)");  
   } else {
     memcpy(gamma_table, GAMMA_TABLE_18, sizeof(gamma_table));
-    PLATFORM_LOG_I(HUB75_DRIVER_TAG, "Updated to optimised gamma table (γ=1.8)");
+    ESP_LOGI(HUB75_DRIVER_TAG, "Updated to optimised gamma table (γ=1.8)");
   }
   
-  PLATFORM_LOG_I(HUB75_DRIVER_TAG, "Fast gamma update - eliminated pow() runtime calculations");
+  ESP_LOGI(HUB75_DRIVER_TAG, "Fast gamma update - eliminated pow() runtime calculations");
 }
 
 bool HUB75Driver::validateConfig(const HUB75Config& cfg) const{
   /** Validate matrix dimensions */
   if(cfg.matrix_width <= 0 || cfg.matrix_height <= 0){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Invalid matrix dimensions: %dx%d", cfg.matrix_width, cfg.matrix_height);
+    ESP_LOGE(HUB75_DRIVER_TAG, "Invalid matrix dimensions: %dx%d", cfg.matrix_width, cfg.matrix_height);
     return false;
   }
   
   /** Validate colour depth */
   if(cfg.colour_depth < 1 || cfg.colour_depth > 8){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Invalid colour depth: %d (must be 1-8)", cfg.colour_depth);
+    ESP_LOGE(HUB75_DRIVER_TAG, "Invalid colour depth: %d (must be 1-8)", cfg.colour_depth);
     return false;
   }
   
   /** Validate clock frequency */
   if(cfg.clock_freq_hz < 1000000 || cfg.clock_freq_hz > 20000000){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Invalid clock frequency: %d Hz", cfg.clock_freq_hz);
+    ESP_LOGE(HUB75_DRIVER_TAG, "Invalid clock frequency: %d Hz", cfg.clock_freq_hz);
     return false;
   }
   
   /** Validate gamma value */
   if(cfg.enable_gamma_correction && (cfg.gamma_value < 0.1f || cfg.gamma_value > 5.0f)){
-    PLATFORM_LOG_E(HUB75_DRIVER_TAG, "Invalid gamma value: %.2f (must be 0.1-5.0)", cfg.gamma_value);
+    ESP_LOGE(HUB75_DRIVER_TAG, "Invalid gamma value: %.2f (must be 0.1-5.0)", cfg.gamma_value);
     return false;
   }
   
@@ -769,3 +769,6 @@ bool HUB75Driver::isValidBufferSize(int width, int height) const{
 }
 
 } // namespace arcos::abstraction::drivers
+
+
+

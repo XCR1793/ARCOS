@@ -94,3 +94,4 @@ public:
 } // namespace arcos::abstraction::drivers
 
 #endif // ARCOS_ABSTRACTION_DRIVERS_DRIVER_HUB75_PROTOCOL_HPP_
+

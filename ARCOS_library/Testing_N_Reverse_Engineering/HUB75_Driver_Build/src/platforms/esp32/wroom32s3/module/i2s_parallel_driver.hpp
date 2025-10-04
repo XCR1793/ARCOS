@@ -1,7 +1,21 @@
-#pragma once
+/*****************************************************************
+ * File:      i2s_parallel_driver.hpp
+ * Category:  abstraction/platforms/esp32/wroom32s3/module
+ * Author:    XCR1793 (Feather Forge)
+ * 
+ * Purpose:
+ *    I2S parallel driver implementation for ESP32-S3 providing
+ *    platform-agnostic parallel output using I2S peripheral.
+ *****************************************************************/
+
+#ifndef ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_I2S_PARALLEL_DRIVER_HPP_
+#define ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_I2S_PARALLEL_DRIVER_HPP_
 
 #include "../../../../core/hal_protocal_parallel.hpp"
-#include "../../../../core/platform_hal.hpp"
+#include <cstdio>
+#include <cstdarg>
+#include "esp_log.h"
+#include "driver/gpio.h"
 
 namespace arcos::abstraction{
 
@@ -45,10 +59,28 @@ private:
   size_t buffer_len;
   bool initialized;
   bool running;
-  IPlatformHAL* platform;              ///< Platform HAL reference
+  
+  /** Private helper functions for GPIO configuration */
+  static inline bool configurePin(int pin, bool is_output){
+    if(pin < 0) return false;
+    gpio_config_t io_conf = {};
+    io_conf.pin_bit_mask = (1ULL << pin);
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.mode = is_output ? GPIO_MODE_OUTPUT : GPIO_MODE_INPUT;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    return gpio_config(&io_conf) == ESP_OK;
+  }
+  
+  static inline bool setPinStrength(int pin, gpio_drive_cap_t strength){
+    if(pin < 0) return false;
+    return gpio_set_drive_capability((gpio_num_t)pin, strength) == ESP_OK;
+  }
 };
 
 } // namespace arcos::abstraction
 
 // Include implementation
 #include "i2s_parallel_driver_impl.hpp"
+
+#endif // ARCOS_ABSTRACTION_PLATFORMS_ESP32_WROOM32S3_MODULE_I2S_PARALLEL_DRIVER_HPP_

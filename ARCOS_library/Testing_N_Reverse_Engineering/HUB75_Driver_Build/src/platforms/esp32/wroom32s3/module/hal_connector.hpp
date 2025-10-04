@@ -13,10 +13,6 @@
 // Platform-specific HAL implementations (headers include their implementations)
 #include "lcd_parallel.hpp"
 #include "i2s_parallel_driver.hpp"
-#include "esp32_platform_impl.hpp"
-
-// Platform implementation functions
-#include "esp32_platform_functions_impl.hpp"
 
 // DMA buffer manager implementation
 #include "parallel_buffer_impl.hpp"
@@ -36,9 +32,6 @@ using HAL_PARALLEL_I2S = I2sParallelDriver;
 
 // Default parallel implementation (LCD_CAM is faster on ESP32-S3)
 using HAL_PARALLEL_DEFAULT = HAL_PARALLEL_LCD;
-
-// Platform HAL implementation
-using HAL_PLATFORM_DEFAULT = ESP32PlatformHAL;
 
 } // namespace arcos::abstraction
 

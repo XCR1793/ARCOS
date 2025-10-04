@@ -1,6 +1,7 @@
 /*****************************************************************
  * File:      hal.hpp
  * Category:  abstraction
+ * Author:    XCR1793 (Feather Forge)
  * 
  * Purpose:
  *    Main HAL header - includes all core HAL APIs and automatically
@@ -14,7 +15,6 @@
 #define HUB75_ABSTRACTION_HAL_HPP_
 
 // Core HAL APIs (platform-agnostic public interfaces)
-#include "core/platform_hal.hpp"
 #include "core/hal_protocal_parallel.hpp"
 #include "core/hal_protocal_dma.hpp"
 #include "core/hal_protocal_parallel_buffer.hpp"

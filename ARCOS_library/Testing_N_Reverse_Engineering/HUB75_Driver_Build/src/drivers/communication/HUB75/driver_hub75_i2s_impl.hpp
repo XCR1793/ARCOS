@@ -21,7 +21,6 @@ HUB75_I2S_Protocol::HUB75_I2S_Protocol()
   , frontBuffer(nullptr)
   , backBuffer(nullptr)
   , buffer_size(0)
-  , platform(getPlatformHAL())
   , initialized(false)
   , running(false)
   , external_init(false)
@@ -38,13 +37,13 @@ HUB75_I2S_Protocol::~HUB75_I2S_Protocol(){
 bool HUB75_I2S_Protocol::init(const HUB75Config& cfg, int buf_size, 
                                IParallelHardware* hardware, IDmaBufferManager* buffer_mgr){
   if(initialized){
-    PLATFORM_LOG_W(HUB75_I2S_TAG, "Protocol already initialised");
+    ESP_LOGW(HUB75_I2S_TAG, "Protocol already initialised");
     return true;
   }
   
   // Protocol REQUIRES hardware and buffer manager to be injected by application
   if(!hardware || !buffer_mgr){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Hardware interface and buffer manager must be provided (cannot be null)");
+    ESP_LOGE(HUB75_I2S_TAG, "Hardware interface and buffer manager must be provided (cannot be null)");
     return false;
   }
   
@@ -86,7 +85,7 @@ bool HUB75_I2S_Protocol::init(const HUB75Config& cfg, int buf_size,
   buffer_config.auto_allocate = true;
   
   if(!bufferManager->init(buffer_config)){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Failed to initialize buffer manager");
+    ESP_LOGE(HUB75_I2S_TAG, "Failed to initialize buffer manager");
     delete[] lcd_data_pins;
     return false;
   }
@@ -103,7 +102,7 @@ bool HUB75_I2S_Protocol::init(const HUB75Config& cfg, int buf_size,
   
   /** Initialise hardware interface */
   if(!hwInterface->init(lcd_data_pins, hw_config)){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Failed to initialise hardware interface");
+    ESP_LOGE(HUB75_I2S_TAG, "Failed to initialise hardware interface");
     delete[] lcd_data_pins;
     return false;
   }
@@ -115,41 +114,41 @@ bool HUB75_I2S_Protocol::init(const HUB75Config& cfg, int buf_size,
   backBuffer = bufferManager->getBackBuffer();
   
   if(!frontBuffer || !backBuffer){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Failed to get buffer pointers from buffer manager");
+    ESP_LOGE(HUB75_I2S_TAG, "Failed to get buffer pointers from buffer manager");
     return false;
   }
   
   initialized = true;
   
-  PLATFORM_LOG_I(HUB75_I2S_TAG, "HUB75 I2S protocol initialised:");
-  PLATFORM_LOG_I(HUB75_I2S_TAG, "  Hardware backend: %s", hwInterface->getBackendName());
-  PLATFORM_LOG_I(HUB75_I2S_TAG, "  Clock: %dMHz", config.clock_freq_hz / 1000000);
-  PLATFORM_LOG_I(HUB75_I2S_TAG, "  Buffer size: %d samples", buffer_size);
-  PLATFORM_LOG_I(HUB75_I2S_TAG, "  Buffer mode: %s", 
+  ESP_LOGI(HUB75_I2S_TAG, "HUB75 I2S protocol initialised:");
+  ESP_LOGI(HUB75_I2S_TAG, "  Hardware backend: %s", hwInterface->getBackendName());
+  ESP_LOGI(HUB75_I2S_TAG, "  Clock: %dMHz", config.clock_freq_hz / 1000000);
+  ESP_LOGI(HUB75_I2S_TAG, "  Buffer size: %d samples", buffer_size);
+  ESP_LOGI(HUB75_I2S_TAG, "  Buffer mode: %s", 
            bufferManager->getMode() == BufferMode::DOUBLE_BUFFER ? "Double buffered" : "Single buffered");
   
   return true;
 }
 
 bool HUB75_I2S_Protocol::init(const HUB75Config& config, int buffer_size){
-  PLATFORM_LOG_E(HUB75_I2S_TAG, "Must call init() with hardware and buffer manager dependencies");
-  PLATFORM_LOG_E(HUB75_I2S_TAG, "Use init(config, buffer_size, hardware, buffer_manager) instead");
+  ESP_LOGE(HUB75_I2S_TAG, "Must call init() with hardware and buffer manager dependencies");
+  ESP_LOGE(HUB75_I2S_TAG, "Use init(config, buffer_size, hardware, buffer_manager) instead");
   return false;
 }
 
 bool HUB75_I2S_Protocol::start(){
   if(!initialized){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Protocol not initialised");
+    ESP_LOGE(HUB75_I2S_TAG, "Protocol not initialised");
     return false;
   }
   
   if(running){
-    PLATFORM_LOG_W(HUB75_I2S_TAG, "Protocol already running");
+    ESP_LOGW(HUB75_I2S_TAG, "Protocol already running");
     return true;
   }
   
   /** Debug: Check if frontBuffer has data */
-  PLATFORM_LOG_I(HUB75_I2S_TAG, "DEBUG: frontBuffer first 10 samples: %04X %04X %04X %04X %04X %04X %04X %04X %04X %04X",
+  ESP_LOGI(HUB75_I2S_TAG, "DEBUG: frontBuffer first 10 samples: %04X %04X %04X %04X %04X %04X %04X %04X %04X %04X",
                 frontBuffer[0], frontBuffer[1], frontBuffer[2], frontBuffer[3], frontBuffer[4],
                 frontBuffer[5], frontBuffer[6], frontBuffer[7], frontBuffer[8], frontBuffer[9]);
   
@@ -157,19 +156,19 @@ bool HUB75_I2S_Protocol::start(){
    *  Call setDirectBuffer() with current frontBuffer
    */
   if(!hwInterface->setDirectBuffer(frontBuffer, buffer_size)){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Failed to set front buffer before start");
+    ESP_LOGE(HUB75_I2S_TAG, "Failed to set front buffer before start");
     return false;
   }
   
   /** Start transmission using hardware interface */
   if(!hwInterface->start()){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Failed to start transmission");
+    ESP_LOGE(HUB75_I2S_TAG, "Failed to start transmission");
     return false;
   }
   
   running = true;
   
-  PLATFORM_LOG_I(HUB75_I2S_TAG, "HUB75 I2S transmission started");
+  ESP_LOGI(HUB75_I2S_TAG, "HUB75 I2S transmission started");
   return true;
 }
 
@@ -177,18 +176,18 @@ void HUB75_I2S_Protocol::stop(){
   if(running && hwInterface){
     hwInterface->stop();
     running = false;
-    PLATFORM_LOG_I(HUB75_I2S_TAG, "HUB75 I2S transmission stopped");
+    ESP_LOGI(HUB75_I2S_TAG, "HUB75 I2S transmission stopped");
   }
 }
 
 bool HUB75_I2S_Protocol::setBuffer(const uint16_t* buffer, int size){
   if(!initialized){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Protocol not initialised");
+    ESP_LOGE(HUB75_I2S_TAG, "Protocol not initialised");
     return false;
   }
   
   if(size != buffer_size){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Buffer size mismatch: expected %d, got %d", buffer_size, size);
+    ESP_LOGE(HUB75_I2S_TAG, "Buffer size mismatch: expected %d, got %d", buffer_size, size);
     return false;
   }
   
@@ -197,7 +196,7 @@ bool HUB75_I2S_Protocol::setBuffer(const uint16_t* buffer, int size){
   
   /** Update hardware interface to use front buffer */
   if(!hwInterface->setDirectBuffer(frontBuffer, buffer_size)){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Failed to set buffer in hardware interface");
+    ESP_LOGE(HUB75_I2S_TAG, "Failed to set buffer in hardware interface");
     return false;
   }
   
@@ -206,14 +205,14 @@ bool HUB75_I2S_Protocol::setBuffer(const uint16_t* buffer, int size){
 
 bool HUB75_I2S_Protocol::swapBuffer(const uint16_t* buffer, int size){
   if(!initialized){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Protocol not initialised");
+    ESP_LOGE(HUB75_I2S_TAG, "Protocol not initialised");
     return false;
   }
   
   // If buffer is provided, copy it to back buffer
   if(buffer && size > 0){
     if(size != buffer_size){
-      PLATFORM_LOG_E(HUB75_I2S_TAG, "Buffer size mismatch: expected %d, got %d", buffer_size, size);
+      ESP_LOGE(HUB75_I2S_TAG, "Buffer size mismatch: expected %d, got %d", buffer_size, size);
       return false;
     }
     std::memcpy(backBuffer, buffer, size * sizeof(uint16_t));
@@ -222,7 +221,7 @@ bool HUB75_I2S_Protocol::swapBuffer(const uint16_t* buffer, int size){
   
   /** Swap buffers in the buffer manager */
   if(!bufferManager->swapBuffers()){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Failed to swap buffers in buffer manager");
+    ESP_LOGE(HUB75_I2S_TAG, "Failed to swap buffers in buffer manager");
     return false;
   }
   
@@ -232,7 +231,7 @@ bool HUB75_I2S_Protocol::swapBuffer(const uint16_t* buffer, int size){
   
   /** Update hardware interface to use new front buffer */
   if(!hwInterface->swapBuffer(frontBuffer, buffer_size)){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Failed to swap buffer in hardware interface");
+    ESP_LOGE(HUB75_I2S_TAG, "Failed to swap buffer in hardware interface");
     return false;
   }
   
@@ -241,7 +240,7 @@ bool HUB75_I2S_Protocol::swapBuffer(const uint16_t* buffer, int size){
 
 uint16_t* HUB75_I2S_Protocol::getWritableBuffer(){
   if(!initialized){
-    PLATFORM_LOG_E(HUB75_I2S_TAG, "Protocol not initialised");
+    ESP_LOGE(HUB75_I2S_TAG, "Protocol not initialised");
     return nullptr;
   }
   
@@ -257,3 +256,4 @@ const char* HUB75_I2S_Protocol::getBackendName() const{
 }
 
 } // namespace arcos::abstraction::drivers
+
