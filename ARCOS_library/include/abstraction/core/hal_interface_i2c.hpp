@@ -147,6 +147,22 @@ namespace arcos::abstraction{
     static HalResult SetTimeout(uint8_t bus_id, uint32_t timeout_ms){
       return PlatformImplementation::SetTimeout(bus_id, timeout_ms);
     }
+
+    /**
+     * @brief Write raw bytes to I2C device (no register address)
+     * Useful for devices that don't use register addressing (like OLEDs)
+     * @param bus_id I2C bus number
+     * @param device_address 7-bit I2C device address
+     * @param buffer Data buffer to write
+     * @param length Number of bytes to write
+     * @return HalResult indicating success or failure
+     */
+    static HalResult WriteBytes(uint8_t bus_id,
+                               uint8_t device_address,
+                               const uint8_t* buffer,
+                               size_t length){
+      return PlatformImplementation::WriteBytes(bus_id, device_address, buffer, length);
+    }
   };
 
   /**
@@ -166,6 +182,7 @@ namespace arcos::abstraction{
       default:                           return 6; // DriverResult::HardwareError
     }
   }
-}
+
+} // namespace arcos::abstraction
 
 #endif // ARCOS_ABSTRACTION_CORE_HAL_INTERFACE_I2C_HPP_

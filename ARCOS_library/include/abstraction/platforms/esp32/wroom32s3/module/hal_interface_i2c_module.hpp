@@ -250,6 +250,29 @@ struct ESP32S3_I2C_HAL{
     return EspErrorToHalResult(ret);
   }
 
+  /** Write raw bytes to I2C device (no register address) */
+  static HalResult WriteBytes(uint8_t bus_id,
+                              uint8_t device_address,
+                              const uint8_t* buffer,
+                              size_t length){
+    if(bus_id >= I2C_NUM_MAX || buffer == nullptr || length == 0){
+      return HalResult::InvalidParameter;
+    }
+    
+    i2c_port_t port = static_cast<i2c_port_t>(bus_id);
+    
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (device_address << 1) | I2C_MASTER_WRITE, true);
+    i2c_master_write(cmd, buffer, length, true);
+    i2c_master_stop(cmd);
+    
+    esp_err_t ret = i2c_master_cmd_begin(port, cmd, pdMS_TO_TICKS(1000));
+    i2c_cmd_link_delete(cmd);
+    
+    return EspErrorToHalResult(ret);
+  }
+
 private:
   /** Convert ESP-IDF error to HAL result */
   static HalResult EspErrorToHalResult(esp_err_t esp_err){
