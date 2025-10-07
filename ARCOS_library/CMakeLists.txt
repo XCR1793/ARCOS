@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 3.16.0)
-include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(ARCOS_library)
 
+# Only include ESP-IDF for embedded builds
+if(DEFINED ENV{IDF_PATH})
+  include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+endif()
+
+project(ARCOS_library)
 
 option(BUILD_SYSTEM "Off by default to prevent platformio espidf issues" OFF)
 if(BUILD_SYSTEM)
