@@ -51,6 +51,7 @@
 
 // System utilities
 #include "core/hal_system_timer.hpp"        // System timer functions
+#include "core/hal_logging.hpp"             // Logging and debug output
 
 /*****************************************************************
  * Platform-Specific Implementation Selection

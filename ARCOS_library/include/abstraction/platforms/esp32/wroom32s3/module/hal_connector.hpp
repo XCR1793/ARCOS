@@ -44,6 +44,12 @@
 #include "parallel_buffer_impl.hpp"         // DMA buffer manager for parallel output
 
 /*****************************************************************
+ * SECTION 4: Logging and Debugging Implementations
+ *****************************************************************/
+
+#include "hal_logging_module.hpp"           // Logging system implementation
+
+/*****************************************************************
  * Platform Type Aliases
  * 
  * These type aliases map generic HAL interface names to specific
@@ -74,6 +80,22 @@ using HAL_I2C_DEFAULT = arcos::abstraction::ESP32S3_I2C;
 
 /** Default system timer implementation for ESP32-S3 */
 using HAL_TIMER_DEFAULT = arcos::abstraction::HAL_SYSTEM_TIMER::ESP32S3;
+
+/*****************************************************************
+ * Logging Implementations
+ *****************************************************************/
+
+/** Default logging implementation for ESP32-S3 (Info level) */
+using HAL_LOG_DEFAULT = arcos::abstraction::ESP32S3_LoggingDefault;
+
+/** Debug logging with extended output */
+using HAL_LOG_DEBUG = arcos::abstraction::ESP32S3_LoggingDebug;
+
+/** Verbose logging with all messages */
+using HAL_LOG_VERBOSE = arcos::abstraction::ESP32S3_LoggingVerbose;
+
+/** Production logging with errors only */
+using HAL_LOG_PRODUCTION = arcos::abstraction::ESP32S3_LoggingProduction;
 
 /*****************************************************************
  * Parallel Data Transmission Implementations
