@@ -243,6 +243,35 @@ namespace arcos::abstraction{
      */
     const char* getMountPoint() const { return mount_point_; }
     
+    // ============== CONVENIENCE METHODS ==============
+    
+    /**
+     * @brief Simple file list - returns array of FileInfo
+     * @param directory Path to directory (empty string for root)
+     * @param files Pointer to FileInfo array
+     * @param max_files Maximum number of files to retrieve
+     * @param file_count Pointer to store actual file count
+     * @return SdCardResult indicating success or failure
+     * @note This is the same as listDirectory but with clearer naming
+     */
+    SdCardResult getFiles(const char* directory, FileInfo* files, size_t max_files, size_t* file_count){
+      return listDirectory(directory, files, max_files, file_count);
+    }
+    
+    /**
+     * @brief Get error message string from result code
+     * @param result The result code to convert
+     * @return Human-readable error message
+     */
+    static const char* getErrorString(SdCardResult result);
+    
+    /**
+     * @brief Validate configuration before initialization
+     * @param config Configuration to validate
+     * @return True if configuration is valid
+     */
+    static bool validateConfig(const SdCardConfig& config);
+    
   private:
     bool initialized_;           ///< Initialization status
     void* card_handle_;          ///< Internal card handle (sdmmc_card_t*)

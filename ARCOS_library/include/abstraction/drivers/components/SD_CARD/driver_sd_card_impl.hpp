@@ -69,6 +69,12 @@ inline SdCardResult DRIVER_SD_CARD::initialize(const SdCardConfig& config){
     return SdCardResult::Success;
   }
   
+  // Validate configuration
+  if(!validateConfig(config)){
+    ESP_LOGE(SD_CARD_TAG, "Invalid configuration - initialization aborted");
+    return SdCardResult::InvalidParameter;
+  }
+  
   config_ = config;
   strncpy(mount_point_, config.mount_point, sizeof(mount_point_) - 1);
   mount_point_[sizeof(mount_point_) - 1] = '\0';
@@ -561,6 +567,81 @@ inline SdCardResult DRIVER_SD_CARD::formatCard(){
   format_config.format_if_failed = true;
   
   return initialize(format_config);
+}
+
+// ============== CONVENIENCE METHODS ==============
+
+inline const char* DRIVER_SD_CARD::getErrorString(SdCardResult result){
+  switch(result){
+    case SdCardResult::Success:           return "Success";
+    case SdCardResult::InitError:         return "Initialization error";
+    case SdCardResult::MountError:        return "Mount error";
+    case SdCardResult::NotInitialized:    return "Not initialized";
+    case SdCardResult::FileNotFound:      return "File not found";
+    case SdCardResult::FileOpenError:     return "File open error";
+    case SdCardResult::FileReadError:     return "File read error";
+    case SdCardResult::FileWriteError:    return "File write error";
+    case SdCardResult::DirectoryError:    return "Directory error";
+    case SdCardResult::InvalidParameter:  return "Invalid parameter";
+    case SdCardResult::InsufficientSpace: return "Insufficient space";
+    case SdCardResult::CardNotPresent:    return "Card not present";
+    default:                              return "Unknown error";
+  }
+}
+
+inline bool DRIVER_SD_CARD::validateConfig(const SdCardConfig& config){
+  // Validate SPI host
+  if(config.spi_host > 2){
+    ESP_LOGE(SD_CARD_TAG, "Invalid SPI host: %d (must be 0, 1, or 2)", config.spi_host);
+    return false;
+  }
+  
+  // Validate GPIO pins (ESP32-S3 has GPIO 0-48)
+  if(config.pin_mosi > 48 || config.pin_miso > 48 || 
+     config.pin_sck > 48 || config.pin_cs > 48){
+    ESP_LOGE(SD_CARD_TAG, "Invalid GPIO pins (must be 0-48)");
+    ESP_LOGE(SD_CARD_TAG, "  MOSI=%d, MISO=%d, SCK=%d, CS=%d", 
+             config.pin_mosi, config.pin_miso, config.pin_sck, config.pin_cs);
+    return false;
+  }
+  
+  // Check for duplicate pins
+  if(config.pin_mosi == config.pin_miso || 
+     config.pin_mosi == config.pin_sck || 
+     config.pin_mosi == config.pin_cs ||
+     config.pin_miso == config.pin_sck || 
+     config.pin_miso == config.pin_cs ||
+     config.pin_sck == config.pin_cs){
+    ESP_LOGE(SD_CARD_TAG, "Duplicate GPIO pins detected!");
+    ESP_LOGE(SD_CARD_TAG, "  MOSI=%d, MISO=%d, SCK=%d, CS=%d", 
+             config.pin_mosi, config.pin_miso, config.pin_sck, config.pin_cs);
+    return false;
+  }
+  
+  // Validate frequency (1 MHz to 40 MHz)
+  if(config.max_frequency_hz < 1000000 || config.max_frequency_hz > 40000000){
+    ESP_LOGW(SD_CARD_TAG, "Frequency %lu Hz outside recommended range (1-40 MHz)", 
+             (unsigned long)config.max_frequency_hz);
+  }
+  
+  // Validate max open files
+  if(config.max_open_files < 1 || config.max_open_files > 20){
+    ESP_LOGW(SD_CARD_TAG, "max_open_files=%d outside recommended range (1-20)", 
+             config.max_open_files);
+  }
+  
+  // Validate mount point
+  if(!config.mount_point || strlen(config.mount_point) == 0){
+    ESP_LOGE(SD_CARD_TAG, "Invalid mount point (null or empty)");
+    return false;
+  }
+  
+  if(config.mount_point[0] != '/'){
+    ESP_LOGE(SD_CARD_TAG, "Mount point must start with '/' (got: %s)", config.mount_point);
+    return false;
+  }
+  
+  return true;
 }
 
 } // namespace arcos::abstraction
