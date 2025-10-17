@@ -36,7 +36,15 @@
   "license": "MIT",
   "headers": "include/arcos.hpp",
   "export": {
-    "include": "include"
+    "include": "include",
+    "exclude": [
+      "tests",
+      "examples", 
+      "build",
+      "Testing*",
+      "CMakeLists.txt",
+      "*.md"
+    ]
   },
   "build": {
     "flags": [

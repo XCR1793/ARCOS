@@ -1,8 +1,35 @@
 # ARCOS Library - PlatformIO Integration Summary
 
+## Repository Structure Challenge
+
+Your library is located in the `ARCOS_library` subdirectory of your GitHub repository. PlatformIO expects library files at the repository root when using Git dependencies.
+
+## Solutions Provided
+
+### Current Working Method (Immediate Use)
+
+Users can include your library using:
+
+```ini
+[env:esp32s3]
+platform = espressif32
+board = esp32s3usbotg
+framework = espidf
+
+lib_deps = 
+    https://github.com/XCR1793/ARCOS.git#main
+
+build_flags = 
+    -std=c++17
+    -DTARGET_ESP32_Wroom32S3_Module
+    -I.pio/libdeps/$PIOENV/ARCOS/ARCOS_library/include
+```
+
+The key is the include path: `-I.pio/libdeps/$PIOENV/ARCOS/ARCOS_library/include`
+
 ## What Has Been Done
 
-I've successfully converted your ARCOS header-only library into a PlatformIO-compatible format. Here's what was implemented:
+I've successfully converted your ARCOS header-only library into a PlatformIO-compatible format with multiple inclusion options:
 
 ### 1. PlatformIO Library Configuration
 
@@ -113,15 +140,30 @@ void setup() {
 ## Next Steps
 
 ### For Immediate Use:
-1. Push these changes to your GitHub repository
-2. Users can immediately start using the Git dependency method
-3. Test with the provided examples
+1. **Push these changes to your GitHub repository**
+2. **Users can immediately start using the Git dependency method with include path:**
+   ```ini
+   lib_deps = https://github.com/XCR1793/ARCOS.git#main
+   build_flags = -I.pio/libdeps/$PIOENV/ARCOS/ARCOS_library/include
+   ```
+3. **Test with the provided examples**
+4. **Use setup scripts** (`setup_platformio.sh` / `setup_platformio.bat`) for easier setup
 
 ### For Enhanced Distribution:
-1. **Tag a Release**: Create v1.0.0 tag for stable version
-2. **Registry Submission**: Submit to PlatformIO Registry for easier discovery
-3. **Arduino Library Manager**: Submit to Arduino Library Manager
-4. **Documentation Site**: Consider creating a dedicated documentation website
+1. **Repository Restructure** (Recommended): Move library files to repository root:
+   ```bash
+   # Copy these to repository root:
+   cp ARCOS_library/library.json ./
+   cp ARCOS_library/library.properties ./
+   cp -r ARCOS_library/include ./
+   cp -r ARCOS_library/examples ./
+   ```
+   This enables simple inclusion: `lib_deps = https://github.com/XCR1793/ARCOS.git#main`
+
+2. **Tag a Release**: Create v1.0.0 tag for stable version
+3. **Registry Submission**: Submit to PlatformIO Registry for easier discovery
+4. **Arduino Library Manager**: Submit to Arduino Library Manager
+5. **Documentation Site**: Consider creating a dedicated documentation website
 
 ### For Continued Development:
 1. **CI/CD**: Set up automated testing for multiple platforms

@@ -12,6 +12,8 @@ A comprehensive header-only library providing hardware abstraction layers, senso
 
 ## Quick Start with PlatformIO
 
+**Important**: The library is currently located in the `ARCOS_library` subdirectory of the repository. This requires an additional include path when using Git dependencies.
+
 ### Method 1: Git Dependency (Recommended)
 
 Add the library to your `platformio.ini` file:
@@ -28,6 +30,27 @@ lib_deps =
 build_flags = 
     -std=c++17
     -DTARGET_ESP32_Wroom32S3_Module
+    ; Add include path since library is in ARCOS_library subdirectory
+    -I.pio/libdeps/$PIOENV/ARCOS/ARCOS_library/include
+```
+
+**Note**: The library files are located in the `ARCOS_library` subdirectory of the repository, so the include path flag is required.
+
+### Method 1b: Using Setup Scripts (Easier)
+
+Download and run the setup script in your PlatformIO project:
+
+**Windows:**
+```bash
+curl -O https://raw.githubusercontent.com/XCR1793/ARCOS/main/ARCOS_library/setup_platformio.bat
+setup_platformio.bat
+```
+
+**Linux/Mac:**
+```bash
+curl -O https://raw.githubusercontent.com/XCR1793/ARCOS/main/ARCOS_library/setup_platformio.sh
+chmod +x setup_platformio.sh
+./setup_platformio.sh
 ```
 
 ### Method 2: Direct Clone
@@ -37,6 +60,19 @@ Clone the repository into your project's `lib` folder:
 ```bash
 cd your_project/lib
 git clone https://github.com/XCR1793/ARCOS.git
+cd ARCOS/ARCOS_library
+# Copy library to proper location
+cp -r . ../ARCOS_lib
+cd ../../
+rm -rf ARCOS
+mv ARCOS_lib ARCOS
+```
+
+Alternatively, use the repository directly with proper include path:
+```bash
+cd your_project/lib
+git clone https://github.com/XCR1793/ARCOS.git
+# Then add include path in platformio.ini as shown in Method 1
 ```
 
 ### Basic Usage
