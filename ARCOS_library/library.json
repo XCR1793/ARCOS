@@ -1,0 +1,58 @@
+{
+  "name": "ARCOS",
+  "version": "1.0.0",
+  "description": "ARCOS Hardware Abstraction Framework - A comprehensive header-only library providing modular hardware abstraction layers, sensor fusion algorithms, and driver implementations for embedded systems. Supports both complete library inclusion and granular module selection.",
+  "keywords": [
+    "hardware abstraction",
+    "hal",
+    "sensor fusion",
+    "imu",
+    "modular",
+    "header-only",
+    "drivers",
+    "esp32",
+    "arduino",
+    "quaternion",
+    "euler angles",
+    "hub75",
+    "display",
+    "i2c",
+    "spi",
+    "gpio"
+  ],
+  "authors": [
+    {
+      "name": "XCR1793",
+      "email": "your-email@example.com",
+      "maintainer": true
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/XCR1793/ARCOS.git",
+    "branch": "main"
+  },
+  "homepage": "https://github.com/XCR1793/ARCOS",
+  "license": "MIT",
+  "headers": "include/arcos.hpp",
+  "export": {
+    "include": "include"
+  },
+  "build": {
+    "flags": [
+      "-std=c++17"
+    ],
+    "includeDir": "include"
+  },
+  "frameworks": [
+    "arduino",
+    "espidf"
+  ],
+  "platforms": [
+    "espressif32",
+    "atmelavr",
+    "teensy",
+    "ststm32"
+  ],
+  "dependencies": []
+}
