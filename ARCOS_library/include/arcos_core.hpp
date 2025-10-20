@@ -48,6 +48,13 @@
   // Future: STM32 specific implementations
 #endif
 
+// Core mathematics utilities
+#include "core/maths.hpp"
+
+// Core bit operations utilities
+#include "core/bit_ops.hpp"
+#include "core/bit_ops_convenience.hpp"
+
 /** 
  * @brief ARCOS Core Module
  * 
@@ -56,15 +63,29 @@
  * - Communication protocols (I2C, SPI, parallel)
  * - System timers and logging
  * - Platform-specific implementations (automatically included)
+ * - Fast mathematics utilities (trigonometric functions with LUT)
+ * - Comprehensive bit operations (conversions, extractions, packing)
  * 
  * Usage:
  * ```cpp
  * #include <arcos_core.hpp>
  * 
  * using namespace arcos::abstraction;
+ * using namespace arcos::core::maths;
+ * using namespace arcos::core::bit_ops;
  * 
  * // Use HAL functionality
  * core::HALGPIODigital<2>::setMode(GPIO_MODE_OUTPUT);
+ * 
+ * // Use fast trigonometric functions
+ * initializeFastTrig(FastTrig::Precision::DEG_0_1);
+ * float result = fastSin(1.5708f); // π/2
+ * 
+ * // Use bit operations
+ * initializeBitOps({true, true, 2.2f}); // Enable gamma correction
+ * uint8_t value5 = convert8to5(255); // Convert 8-bit to 5-bit
+ * uint8_t bit = getBitFromValue(value5, 2); // Extract bit plane
+ * uint16_t rgb565 = packRGB565(r5, g6, b5); // Pack RGB
  * ```
  */
 namespace arcos::core {

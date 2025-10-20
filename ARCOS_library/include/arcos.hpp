@@ -20,6 +20,7 @@
 #include "arcos_core.hpp"       // HAL and platform abstractions
 #include "arcos_algorithms.hpp" // Sensor fusion and algorithms
 #include "arcos_drivers.hpp"    // Hardware drivers (includes core)
+#include "arcos_processing.hpp" // Processing and configuration utilities
 
 /** 
  * @brief ARCOS Hardware Abstraction Framework - Complete Library
@@ -41,6 +42,12 @@
  * - Display and sensor abstractions
  * - Storage and communication drivers
  * 
+ * **Processing Module (arcos_processing.hpp):**
+ * - OWO configuration file parser (.owo format)
+ * - Type-safe configuration management
+ * - Firmware variable substitution
+ * - Data processing utilities
+ * 
  * **Usage Options:**
  * 
  * 1. **Complete Library (this file):**
@@ -54,13 +61,15 @@
  * #include <arcos_core.hpp>       // Just HAL and platforms
  * #include <arcos_algorithms.hpp> // Just sensor fusion
  * #include <arcos_drivers.hpp>    // Just drivers (includes core)
+ * #include <arcos_processing.hpp> // Just processing utilities
  * ```
  * 
  * 3. **Combination:**
  * ```cpp
  * #include <arcos_core.hpp>
  * #include <arcos_algorithms.hpp>
- * // HAL + algorithms, but no drivers
+ * #include <arcos_processing.hpp>
+ * // HAL + algorithms + processing, but no drivers
  * ```
  * 
  * @note This is a header-only library - no separate compilation required
@@ -78,6 +87,7 @@ namespace arcos {
   constexpr bool CORE_AVAILABLE = true;
   constexpr bool ALGORITHMS_AVAILABLE = true;
   constexpr bool DRIVERS_AVAILABLE = true;
+  constexpr bool PROCESSING_AVAILABLE = true;
 }
 
 #endif // ARCOS_ARCOS_HPP_
