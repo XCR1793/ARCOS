@@ -1,0 +1,178 @@
+# ARCOS HUB75 Animation Configuration
+# version 1.0 - Advanced LED Matrix Patterns
+# This file contains all animation parameters, equations, and display settings
+
+[display]
+width = 128
+height = 32
+panels = 2
+brightness = 255
+gamma_correction = true
+gamma_value = 2.2
+refresh_rate = 60
+
+[spi]
+CS = 14
+mosi = 21
+miso = 48
+clk = 47
+
+[animation.global]
+speed_multiplier = 3.0
+time_scale = 3.0
+pattern_cycle_time = 15.0
+brightness_fade = true
+auto_pattern_switch = true
+pattern_switch_interval = 8.0
+
+[pattern.rainbow_wave]
+enabled = true
+priority = 1
+wave_frequency = 0.08
+wave_amplitude = 120.0
+hue_shift_speed = 5.0
+saturation = 100.0
+lightness = 60.0
+direction = "horizontal"
+wave_equation = "sin(x * freq + time * speed) * amp"
+
+[pattern.plasma_field]
+enabled = true
+priority = 2
+plasma_speed = 2.5
+plasma_scale = 0.15
+color_shift = 8.0
+equation_x = "sin(x * scale + time * speed)"
+equation_y = "cos(y * scale + time * speed * 0.7)"
+equation_combined = "sin(sqrt(x*x + y*y) * scale + time * speed)"
+blend_mode = "additive"
+
+[pattern.matrix_rain]
+enabled = true
+priority = 3
+drop_probability = 0.02
+fade_speed = 0.95
+trail_length = 8
+color_hue = 120.0
+color_saturation = 100.0
+spawn_rate = "random(0.01, 0.05)"
+character_set = "01234567890ABCDEF"
+
+[pattern.fire_simulation]
+enabled = true
+priority = 4
+cooling_factor = 0.55
+spark_probability = 0.1
+wind_effect = 0.3
+heat_equation = "max(0, heat - cooling * random(0.8, 1.2))"
+color_palette = "fire"
+flame_height = 16
+base_temperature = 80
+
+[pattern.spiral_galaxy]
+enabled = true
+priority = 5
+spiral_arms = 3
+rotation_speed = 1.2
+arm_width = 8.0
+center_x = 64
+center_y = 16
+equation_r = "sqrt((x-cx)*(x-cx) + (y-cy)*(y-cy))"
+equation_theta = "atan2(y-cy, x-cx) + time * speed"
+equation_spiral = "sin(theta * arms + r * 0.1 - time * speed)"
+
+[pattern.waveform_visualizer]
+enabled = false
+priority = 6
+frequency_bands = 16
+amplitude_scale = 2.0
+decay_rate = 0.8
+color_spectrum = true
+base_frequency = 440.0
+harmonic_series = "1.0, 0.5, 0.25, 0.125"
+visualization_mode = "bars"
+
+[effects.breathing]
+enabled = true
+breath_speed = 2.0
+min_brightness = 20
+max_brightness = 255
+equation = "sin(time * speed * PI) * 0.5 + 0.5"
+
+[effects.color_cycling]
+enabled = true
+cycle_speed = 1.0
+color_stops = "red, orange, yellow, green, cyan, blue, magenta"
+smooth_transitions = true
+transition_time = 2.0
+
+[effects.particle_system]
+enabled = true
+max_particles = 50
+spawn_rate = 2.0
+particle_life = 5.0
+gravity = -0.1
+wind_x = 0.05
+wind_y = 0.0
+particle_size = 1
+color_fade = true
+
+[equations.wave_functions]
+sine = "sin(x)"
+cosine = "cos(x)"
+tangent = "tan(x)"
+square = "sign(sin(x))"
+sawtooth = "2 * (x - floor(x + 0.5))"
+triangle = "2 * abs(2 * (x - floor(x + 0.5))) - 1"
+
+[equations.noise_functions]
+perlin_2d = "perlin(x * scale, y * scale + time)"
+simplex_2d = "simplex(x * scale, y * scale + time)"
+cellular = "cellular(x * scale, y * scale)"
+voronoi = "voronoi(x * scale, y * scale)"
+
+[equations.color_functions]
+hsl_to_rgb = "hsl2rgb(h, s, l)"
+hsv_to_rgb = "hsv2rgb(h, s, v)"
+temperature_to_rgb = "temp2rgb(kelvin)"
+rainbow = "rainbow(position)"
+
+[timing]
+fps_target = 60
+frame_time_ms = 16
+animation_step = 0.016
+time_multiplier = 1.0
+pause_between_patterns = 1.0
+
+[hardware.pins]
+r0_pin = 7
+g0_pin = 15
+b0_pin = 16
+r1_pin = 17
+g1_pin = 18
+b1_pin = 8
+a_pin = 41
+b_pin = 40
+c_pin = 39
+d_pin = 38
+e_pin = 42
+lat_pin = 36
+oe_pin = 35
+oe_pin2 = 6
+clock_pin = 37
+
+[hardware.config]
+spi_host = 1
+max_frequency_hz = 20000000
+dual_display_mode = true
+effective_width = 128
+panel_flip_0 = true
+panel_flip_1 = false
+buffer_calculation = "auto"
+
+[debug]
+enable_fps_display = true
+enable_performance_logging = true
+log_level = "INFO"
+show_pattern_transitions = true
+memory_usage_display = false
