@@ -14,8 +14,12 @@
 #include <stdint.h>
 #include <cstddef>
 #include "driver_hub75_protocol.hpp"
+#include "../../../core/hal_protocal_parallel.hpp"
 
 namespace arcos::abstraction::drivers{
+
+using arcos::abstraction::PinNumber;
+using arcos::abstraction::PIN_NC;
 
 /** Compile-time gamma correction table (gamma = 2.2) */
 constexpr uint8_t GAMMA_TABLE_22[32] = {
