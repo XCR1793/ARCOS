@@ -1,11 +1,11 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
-  <diagram name="Page-1" id="kJIiHohPeLVknzp1MuIL">
-    <mxGraphModel dx="1907" dy="1149" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="500" math="0" shadow="0">
+  <diagram name="HAL" id="kJIiHohPeLVknzp1MuIL">
+    <mxGraphModel dx="1580" dy="952" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1480" pageHeight="440" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="IpTgi0b-lF9xfkolY47u-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;absoluteArcSize=1;container=1;dropTarget=1;collapsible=0;recursiveResize=0;allowArrows=0;connectable=0;labelPosition=left;verticalLabelPosition=middle;align=right;verticalAlign=middle;spacingLeft=0;spacingRight=10;" value="Hardware Abstraction Layer API&lt;div&gt;(Virtual Functions)&lt;/div&gt;" vertex="1">
-          <mxGeometry height="40" width="680" x="380" y="240" as="geometry" />
+        <mxCell id="IpTgi0b-lF9xfkolY47u-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;labelBackgroundColor=default;absoluteArcSize=1;container=1;dropTarget=1;collapsible=0;recursiveResize=0;allowArrows=0;connectable=0;labelPosition=left;verticalLabelPosition=middle;align=right;verticalAlign=middle;spacingLeft=0;spacingRight=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Hardware Abstraction Layer API&lt;div&gt;(Virtual Functions)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="760" x="380" y="40" as="geometry" />
         </mxCell>
         <mxCell id="IpTgi0b-lF9xfkolY47u-2" parent="IpTgi0b-lF9xfkolY47u-3" style="rounded=0;whiteSpace=wrap;html=1;" value="Digital GPIO" vertex="1">
           <mxGeometry height="20" width="80" x="10" y="10" as="geometry" />
@@ -34,8 +34,11 @@
         <mxCell id="IpTgi0b-lF9xfkolY47u-50" parent="IpTgi0b-lF9xfkolY47u-3" style="rounded=0;whiteSpace=wrap;html=1;" value="Platform Information" vertex="1">
           <mxGeometry height="20" width="120" x="550" y="10" as="geometry" />
         </mxCell>
+        <mxCell id="IpTgi0b-lF9xfkolY47u-92" parent="IpTgi0b-lF9xfkolY47u-3" style="rounded=0;whiteSpace=wrap;html=1;" value="Platform List" vertex="1">
+          <mxGeometry height="20" width="80" x="670" y="10" as="geometry" />
+        </mxCell>
         <mxCell id="IpTgi0b-lF9xfkolY47u-10" parent="1" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=20;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;rounded=1;container=1;" value="HAL (Notes)" vertex="1">
-          <mxGeometry height="60" width="280" x="1120" y="240" as="geometry" />
+          <mxGeometry height="60" width="280" x="1160" y="40" as="geometry" />
         </mxCell>
         <mxCell id="IpTgi0b-lF9xfkolY47u-11" parent="IpTgi0b-lF9xfkolY47u-10" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" value="Maths use hardware acceleration where possible" vertex="1">
           <mxGeometry height="20" width="280" y="20" as="geometry" />
@@ -43,10 +46,10 @@
         <mxCell id="IpTgi0b-lF9xfkolY47u-16" parent="IpTgi0b-lF9xfkolY47u-10" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" value="Memory: Allocation, deallocation, transfer, probing" vertex="1">
           <mxGeometry height="20" width="280" y="40" as="geometry" />
         </mxCell>
-        <mxCell id="IpTgi0b-lF9xfkolY47u-47" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;absoluteArcSize=1;container=1;dropTarget=1;collapsible=0;recursiveResize=0;align=right;labelPosition=left;verticalLabelPosition=middle;verticalAlign=middle;spacingRight=10;" value="Isolated Library Per Platform&lt;div&gt;(Self contained compile)&lt;/div&gt;" vertex="1">
-          <mxGeometry height="90" width="880" x="200" y="320" as="geometry" />
+        <mxCell id="IpTgi0b-lF9xfkolY47u-47" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;labelBackgroundColor=none;absoluteArcSize=1;container=1;dropTarget=1;collapsible=0;recursiveResize=0;align=right;labelPosition=left;verticalLabelPosition=middle;verticalAlign=middle;spacingRight=10;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Isolated Library Per Platform&lt;div&gt;(Self contained compile)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="880" x="200" y="120" as="geometry" />
         </mxCell>
-        <mxCell id="IpTgi0b-lF9xfkolY47u-29" parent="IpTgi0b-lF9xfkolY47u-47" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;absoluteArcSize=1;container=1;dropTarget=1;collapsible=0;recursiveResize=0;allowArrows=0;connectable=0;labelPosition=left;verticalLabelPosition=middle;align=right;verticalAlign=middle;spacingLeft=0;spacingRight=10;" value="Implementations&lt;div&gt;(Making each platform&#39;s HAL&lt;/div&gt;&lt;div&gt;Compatible with ARCOS HAL)&lt;/div&gt;" vertex="1">
+        <mxCell id="IpTgi0b-lF9xfkolY47u-29" parent="IpTgi0b-lF9xfkolY47u-47" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=none;absoluteArcSize=1;container=1;dropTarget=1;collapsible=0;recursiveResize=0;allowArrows=0;connectable=0;labelPosition=left;verticalLabelPosition=middle;align=right;verticalAlign=middle;spacingLeft=0;spacingRight=10;" value="Implementations&lt;div&gt;(Making each platform&#39;s HAL&lt;/div&gt;&lt;div&gt;Compatible with ARCOS HAL)&lt;/div&gt;" vertex="1">
           <mxGeometry height="40" width="560" x="180" y="10" as="geometry" />
         </mxCell>
         <mxCell id="IpTgi0b-lF9xfkolY47u-30" parent="IpTgi0b-lF9xfkolY47u-29" style="rounded=0;whiteSpace=wrap;html=1;" value="Digital GPIO" vertex="1">
@@ -107,7 +110,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="IpTgi0b-lF9xfkolY47u-66" parent="1" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=20;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;rounded=1;container=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Platform Information" vertex="1">
-          <mxGeometry height="160" width="140" x="1120" y="420" as="geometry" />
+          <mxGeometry height="160" width="140" x="1160" y="240" as="geometry" />
         </mxCell>
         <mxCell id="IpTgi0b-lF9xfkolY47u-67" parent="IpTgi0b-lF9xfkolY47u-66" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Chip Series" vertex="1">
           <mxGeometry height="20" width="140" y="20" as="geometry" />
@@ -131,7 +134,7 @@
           <mxGeometry height="20" width="140" y="140" as="geometry" />
         </mxCell>
         <mxCell id="IpTgi0b-lF9xfkolY47u-75" parent="1" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=20;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;rounded=1;container=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Communication" vertex="1">
-          <mxGeometry height="80" width="280" x="1120" y="320" as="geometry" />
+          <mxGeometry height="100" width="280" x="1160" y="120" as="geometry" />
         </mxCell>
         <mxCell id="IpTgi0b-lF9xfkolY47u-76" parent="IpTgi0b-lF9xfkolY47u-75" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Lists available protocals" vertex="1">
           <mxGeometry height="20" width="280" y="20" as="geometry" />
@@ -142,14 +145,23 @@
         <mxCell id="IpTgi0b-lF9xfkolY47u-87" parent="IpTgi0b-lF9xfkolY47u-75" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Serial debug to console is here as well (USB / UART)" vertex="1">
           <mxGeometry height="20" width="280" y="60" as="geometry" />
         </mxCell>
+        <mxCell id="09QetqFEbgw8NZrGix2m-1" parent="IpTgi0b-lF9xfkolY47u-75" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Wifi, bluetooth and other integrations live here" vertex="1">
+          <mxGeometry height="20" width="280" y="80" as="geometry" />
+        </mxCell>
         <mxCell id="IpTgi0b-lF9xfkolY47u-79" parent="1" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=20;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;rounded=1;container=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Timer" vertex="1">
-          <mxGeometry height="60" width="120" x="1280" y="420" as="geometry" />
+          <mxGeometry height="60" width="120" x="1320" y="240" as="geometry" />
         </mxCell>
         <mxCell id="IpTgi0b-lF9xfkolY47u-80" parent="IpTgi0b-lF9xfkolY47u-79" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Delays" vertex="1">
           <mxGeometry height="20" width="120" y="20" as="geometry" />
         </mxCell>
         <mxCell id="IpTgi0b-lF9xfkolY47u-81" parent="IpTgi0b-lF9xfkolY47u-79" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="System Time (Millis)" vertex="1">
           <mxGeometry height="20" width="120" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="IpTgi0b-lF9xfkolY47u-95" edge="1" parent="1" source="IpTgi0b-lF9xfkolY47u-91" style="edgeStyle=orthogonalEdgeStyle;shape=connector;curved=0;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeColor=default;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;endArrow=classic;" target="IpTgi0b-lF9xfkolY47u-92">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="IpTgi0b-lF9xfkolY47u-91" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;labelBackgroundColor=none;fillColor=#d5e8d4;strokeColor=#82b366;" value="Per Platform Implementation Router (Define which platform is used above abstraction layer)" vertex="1">
+          <mxGeometry height="20" width="670" x="380" y="90" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
