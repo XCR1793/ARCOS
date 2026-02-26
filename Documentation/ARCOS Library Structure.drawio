@@ -1,4 +1,48 @@
-<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2" pages="2">
+  <diagram id="8-uxaZcvVIDJALxRpJSo" name="System Structure">
+    <mxGraphModel dx="1106" dy="666" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1480" pageHeight="440" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="Q0COqciKYjn-9E3yATOQ-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;fontFamily=Helvetica;fontSize=11;labelBackgroundColor=none;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="HAL API" vertex="1">
+          <mxGeometry height="20" width="400" x="120" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="Q0COqciKYjn-9E3yATOQ-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Software Drivers" vertex="1">
+          <mxGeometry height="20" width="100" x="180" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="Q0COqciKYjn-9E3yATOQ-3" parent="1" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=20;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;rounded=1;container=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Software Drivers" vertex="1">
+          <mxGeometry height="80" width="340" x="550" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="Q0COqciKYjn-9E3yATOQ-4" parent="Q0COqciKYjn-9E3yATOQ-3" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="HUB75 Protocal Lives Here (Uses I2S, Memory, Timer)" vertex="1">
+          <mxGeometry height="20" width="340" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="Q0COqciKYjn-9E3yATOQ-6" parent="Q0COqciKYjn-9E3yATOQ-3" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="MAX7215 Protocal Lives Here (Uses GPIO, I2S, Memory, Timer)" vertex="1">
+          <mxGeometry height="20" width="340" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Q0COqciKYjn-9E3yATOQ-5" parent="Q0COqciKYjn-9E3yATOQ-3" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Sensor Communication Lives Here (Uses I2C, UART, SPI, Timer)" vertex="1">
+          <mxGeometry height="20" width="340" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ORFyrVNrOvm_IryRcsZ_-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="ARCOS Core Library API (Fully abstracted, user chooses what drivers)" vertex="1">
+          <mxGeometry height="20" width="400" x="120" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="ORFyrVNrOvm_IryRcsZ_-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];fontFamily=Helvetica;fontSize=11;labelBackgroundColor=none;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="/\" vertex="1">
+          <mxGeometry height="20" width="40" x="120" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="qigIWszOxab6AGBnLMBG-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Software Drivers" vertex="1">
+          <mxGeometry height="20" width="100" x="300" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="qigIWszOxab6AGBnLMBG-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="Software Drivers" vertex="1">
+          <mxGeometry height="20" width="100" x="420" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="qigIWszOxab6AGBnLMBG-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];fontFamily=Helvetica;fontSize=11;labelBackgroundColor=none;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="/\" vertex="1">
+          <mxGeometry height="20" width="40" x="120" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="qigIWszOxab6AGBnLMBG-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;points=[[0,0.5,0,0,0],[1,0.5,0,0,0]];fontFamily=Helvetica;fontSize=11;fontColor=default;labelBackgroundColor=default;" value="User includes the drivers they want to use" vertex="1">
+          <mxGeometry height="20" width="340" x="180" y="200" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
   <diagram name="HAL" id="kJIiHohPeLVknzp1MuIL">
     <mxGraphModel dx="1580" dy="952" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1480" pageHeight="440" math="0" shadow="0">
       <root>
